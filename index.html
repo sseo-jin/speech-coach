@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speech Coach — find your weak sentences</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Speech Coach</h1>
+  <p class="sub">Practice a few times. We find the sentences you keep stumbling on, and turn them into cue cards.</p>
+  <p class="privacy">🔒 Your recordings never leave this browser. Speech-to-text runs on your device.</p>
+</header>
+
+<main>
+  <!-- STEP 1 -->
+  <section class="step" id="step1">
+    <h2><span class="n">1</span> Paste your script</h2>
+    <p class="hint">Leave a blank line between parts (intro, body 1, body 2…). Each part becomes one cue card.</p>
+    <textarea id="script" rows="12" placeholder="Hello everyone, my name is …"></textarea>
+    <div class="row">
+      <button id="loadSample" class="ghost">Load sample script</button>
+      <span id="scriptInfo" class="muted"></span>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step" id="step2">
+    <h2><span class="n">2</span> Add your practice takes</h2>
+    <p class="hint">Upload recordings (m4a, mp3, wav…) or record right here. Three takes or more works best.</p>
+    <div class="row">
+      <label class="btn">Upload files<input id="files" type="file" accept="audio/*,video/*" multiple hidden></label>
+      <button id="recBtn">● Record a take</button>
+      <span id="recTime" class="muted"></span>
+    </div>
+    <ul id="takes" class="takes"></ul>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step" id="step3">
+    <h2><span class="n">3</span> Analyze</h2>
+    <div class="row">
+      <label class="muted">Model
+        <select id="model">
+          <option value="onnx-community/whisper-base.en_timestamped" selected>base (fast)</option>
+          <option value="onnx-community/whisper-small.en_timestamped">small (more accurate, slower)</option>
+        </select>
+      </label>
+      <button id="analyze" class="primary" disabled>Analyze my takes</button>
+    </div>
+    <div id="progress" class="progress" hidden><div class="bar"><div id="bar"></div></div><span id="status"></span></div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step" id="results" hidden>
+    <h2><span class="n">4</span> Your weak sentences</h2>
+    <div id="summary" class="summary"></div>
+    <div id="weak"></div>
+    <details class="detail"><summary>Sentence × take heatmap</summary><div id="heat"></div></details>
+    <details class="detail"><summary>What each take sounded like</summary><div id="diffs"></div></details>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step" id="cardsSec" hidden>
+    <h2><span class="n">5</span> Your cue cards</h2>
+    <p class="hint">Strong sentences show only the first words. Weak ones show the full sentence with the tricky words marked.</p>
+    <div class="row"><button id="print" class="primary">Print / save as PDF</button></div>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section class="pricing">
+    <h2>Pricing</h2>
+    <div class="plans">
+      <div class="plan"><h3>Free</h3><p class="price">$0</p><p>Unlimited takes. Cue cards. Your audio stays with you.</p></div>
+      <div class="plan pro"><h3>Pro</h3><p class="price">$999</p><p>We give the speech for you.<br><span class="muted">(coming never)</span></p></div>
+    </div>
+  </section>
+</main>
+
+<footer class="muted">Made by Jin Seo · runs on Whisper in your browser</footer>
+<script type="module" src="app.js"></script>
+</body>
+</html>

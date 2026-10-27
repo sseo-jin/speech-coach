@@ -1,0 +1,69 @@
+:root{--bg:#f7f7f4;--card:#fff;--ink:#16181d;--muted:#6b7280;--line:#e5e7eb;--accent:#1f3864;--weak:#d9480f;--ok:#2b8a3e;--warn:#e8a200}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.top{max-width:900px;margin:0 auto;padding:40px 16px 8px}
+h1{margin:0;font-size:34px;letter-spacing:-.5px}
+.sub{margin:6px 0 0;font-size:18px}
+.privacy{margin:8px 0 0;color:var(--muted);font-size:14px}
+main{max-width:900px;margin:0 auto;padding:0 16px 40px}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin:16px 0}
+h2{margin:0 0 6px;font-size:20px;display:flex;align-items:center;gap:10px}
+.n{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;font-size:15px}
+.hint{margin:0 0 10px;color:var(--muted);font-size:14px}
+textarea{width:100%;font:15px/1.5 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+button,.btn{font:inherit;border:1px solid var(--accent);background:#fff;color:var(--accent);border-radius:10px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:#fff}
+button.ghost{border-color:var(--line);color:var(--muted)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.rec{background:var(--weak);border-color:var(--weak);color:#fff}
+select{font:inherit;padding:6px;border-radius:8px;border:1px solid var(--line)}
+.muted{color:var(--muted);font-size:14px}
+.takes{list-style:none;padding:0;margin:10px 0 0}
+.takes li{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;margin:6px 0}
+.takes li audio{height:32px;flex:1;min-width:0}
+.takes li .x{border:none;color:var(--muted);padding:2px 8px}
+.progress{margin-top:12px}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden}
+#bar{height:100%;width:0;background:var(--accent);transition:width .3s}
+#status{display:block;margin-top:6px;font-size:14px;color:var(--muted)}
+.summary{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 14px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stat b{display:block;font-size:22px}
+.weak-item{border-left:4px solid var(--weak);background:#fff7f2;border-radius:8px;padding:10px 12px;margin:8px 0}
+.weak-item .sent{font-size:16px}
+.weak-item .why{font-size:13px;color:var(--muted);margin-top:4px}
+mark.bad{background:#ffd8c2;color:inherit;border-radius:3px;padding:0 2px}
+mark.skip{background:none;text-decoration:line-through;color:var(--weak)}
+.detail{margin-top:12px}
+.detail summary{cursor:pointer;color:var(--accent)}
+table.heat{border-collapse:collapse;width:100%;font-size:13px;margin-top:8px}
+table.heat td,table.heat th{border:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+table.heat td.c{text-align:center;width:56px}
+.diff{font-size:14px;line-height:1.9;margin:8px 0 14px}
+.diff .w-ok{color:var(--ink)}
+.diff .w-sub{background:#ffd8c2;border-radius:3px}
+.diff .w-del{color:var(--weak);text-decoration:line-through}
+.diff .w-ins{color:var(--muted);font-style:italic}
+.diff .pause{color:var(--warn);font-weight:700}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
+.card{border:1px dashed #b8bcc6;border-radius:10px;padding:14px 16px;background:#fff}
+.card h3{margin:0 0 8px;font-size:15px;color:var(--accent)}
+.card ol{margin:0;padding-left:20px}
+.card li{margin:4px 0}
+.card .first{font-weight:700}
+.card .full{background:#fff7f2;border-radius:4px;padding:2px 4px}
+.pricing{margin-top:28px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.plan{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px}
+.plan h3{margin:0}
+.plan .price{font-size:28px;font-weight:800;margin:4px 0}
+.plan.pro{border-color:var(--accent)}
+footer{max-width:900px;margin:0 auto;padding:0 16px 30px}
+@media print{
+  body{background:#fff}
+  .top,.step:not(#cardsSec),.pricing,footer,#cardsSec h2,#cardsSec .hint,#cardsSec .row{display:none!important}
+  #cardsSec{border:none;padding:0;margin:0}
+  .cards{display:block}
+  .card{width:148mm;min-height:95mm;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt}
+}
