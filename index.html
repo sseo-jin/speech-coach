@@ -48,6 +48,8 @@
         </select>
       </label>
       <label class="muted">Pause ≥ <select id="pauseMin"><option value="0.5">0.5 s</option><option value="0.8" selected>0.8 s</option><option value="1.2">1.2 s</option></select></label>
+      <label class="muted"><input type="checkbox" id="intonation" checked> Compare intonation with a native voice</label>
+      <select id="voice" title="Native reference voice"><option value="af_heart" selected>US female</option><option value="am_michael">US male</option><option value="bf_emma">UK female</option><option value="bm_george">UK male</option></select>
       <button id="analyze" class="primary" disabled>Analyze my takes</button>
     </div>
     <div id="progress" class="progress" hidden><div class="bar"><div id="bar"></div></div><span id="status"></span></div>
@@ -60,6 +62,13 @@
     <div id="weak"></div>
     <details class="detail"><summary>Sentence × take heatmap</summary><div id="heat"></div></details>
     <details class="detail"><summary>What each take sounded like</summary><div id="diffs"></div></details>
+  </section>
+
+  <!-- INTONATION -->
+  <section class="step" id="intoSec" hidden>
+    <h2><span class="n">♪</span> Intonation vs a native voice</h2>
+    <p class="hint">Blue = native voice (AI, generated on your device). Orange = your takes. Pitch is measured relative to your own voice, so a deep or high voice is fine — only the <i>shape</i> counts. Press ▶ and shadow it.</p>
+    <div id="intoList"></div>
   </section>
 
   <!-- STEP 5 -->
@@ -79,7 +88,7 @@
   </section>
 </main>
 
-<footer class="muted">Made by Jin Seo · runs on Whisper in your browser</footer>
+<footer class="muted">Made by Jin Seo · runs on Whisper + Kokoro in your browser</footer>
 <script type="module" src="app.js"></script>
 </body>
 </html>

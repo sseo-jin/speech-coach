@@ -1,4 +1,5 @@
-import { parseScript, analyzeTake, rankSentences, pickWeak } from './align.js';
+import { parseScript, analyzeTake, rankSentences, pickWeak, norm } from './align.js';
+import { trackPitch, speakerMedian, sentenceContour, compareIntonation } from './pitch.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -120,6 +121,44 @@ function transcribe(audio, model, onStatus) {
   return new Promise((resolve, reject) => { pending.set(id, { resolve, reject, onStatus }); worker.postMessage({ type: 'transcribe', id, audio, model }, [audio.buffer]); });
 }
 
+// ---------- native reference voice (Kokoro TTS, in a worker)
+const ttsWorker = new Worker(new URL('./tts-worker.js', import.meta.url), { type: 'module' });
+let ttsId = 0; const ttsPending = new Map();
+ttsWorker.onmessage = (e) => {
+  const m = e.data; const p = ttsPending.get(m.id); if (!p) return;
+  if (m.type === 'status') p.onStatus(m.text);
+  else if (m.type === 'load') p.onStatus(`Downloading native voice… ${Math.round(m.pct * 100)}%`);
+  else if (m.type === 'done') { ttsPending.delete(m.id); p.resolve(m); }
+  else if (m.type === 'error') { ttsPending.delete(m.id); p.reject(new Error(m.text)); }
+};
+function synthesize(text, voice, onStatus) {
+  const id = ++ttsId;
+  return new Promise((resolve, reject) => { ttsPending.set(id, { resolve, reject, onStatus }); ttsWorker.postMessage({ id, text, voice }); });
+}
+function wavBlob(samples, sr) {
+  const buf = new ArrayBuffer(44 + samples.length * 2), v = new DataView(buf);
+  const w = (o, str) => [...str].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, samples[i])) * 32767, true);
+  return new Blob([buf], { type: 'audio/wav' });
+}
+const nativeCache = new Map(); // `${voice}|${text}` → {url, words, contour}
+async function nativeFor(text, voice, model, onStatus) {
+  const key = `${voice}|${text}`;
+  if (nativeCache.has(key)) return nativeCache.get(key);
+  const out = await synthesize(text, voice, onStatus);
+  const blob = wavBlob(out.audio, out.sr);
+  const pcm = await toPCM(blob);
+  const track = trackPitch(pcm);
+  const ref = speakerMedian(track);
+  const tr = await transcribe(pcm, model, onStatus);
+  const res = { url: URL.createObjectURL(blob), words: tr.words, contour: sentenceContour(track, tr.words, ref) };
+  nativeCache.set(key, res);
+  return res;
+}
+
 function setProgress(frac, text) { $('#progress').hidden = false; $('#bar').style.width = `${Math.round(frac * 100)}%`; $('#status').textContent = text; }
 
 $('#analyze').onclick = async () => {
@@ -133,12 +172,27 @@ $('#analyze').onclick = async () => {
       setProgress(base, `Take ${i + 1}/${state.takes.length}: decoding audio…`);
       const pcm = await toPCM(state.takes[i].blob);
       const silences = findSilences(pcm);
+      const track = trackPitch(pcm); // before transcribe: the buffer is handed to the worker
       const out = await transcribe(pcm, model, (t) => setProgress(base + step * 0.3, `Take ${i + 1}/${state.takes.length}: ${t}`));
-      results.push({ ...analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value }), text: out.text });
+      const r = analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value });
+      const ref = speakerMedian(track);
+      r.contours = r.per.map(p => p.attempted ? sentenceContour(track, p.h.slice().sort((a, b) => a - b).map(k => r.hw[k]), ref) : null);
+      r.sentWords = r.per.map(p => p.h.slice().sort((a, b) => a - b).map(k => r.hw[k]));
+      results.push({ ...r, text: out.text });
       setProgress(base + step, `Take ${i + 1} done`);
+    }
+    let natives = null;
+    if ($('#intonation').checked) {
+      natives = [];
+      const voice = $('#voice').value, n = script.sentences.length;
+      for (let si = 0; si < n; si++) {
+        setProgress(si / n, `Native voice: sentence ${si + 1}/${n}…`);
+        natives.push(await nativeFor(script.sentences[si].text, voice, model, (t) => setProgress(si / n, `Native voice ${si + 1}/${n}: ${t}`)));
+      }
     }
     setProgress(1, 'Done ✓');
     render(script, results);
+    renderIntonation(script, results, natives);
   } catch (err) {
     setProgress(0, 'Something went wrong: ' + err.message);
   } finally { refreshAnalyze(); }
@@ -206,6 +260,56 @@ function render(script, takes) {
   }).join('');
   $('#cardsSec').hidden = false;
   $('#results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ---------- intonation vs native
+function curvePath(curve, w, h, lo, hi) {
+  let d = '', pen = false;
+  curve.forEach((v, k) => {
+    if (v === null) { pen = false; return; }
+    const x = (k + 0.5) / curve.length * w, y = h - (v - lo) / (hi - lo) * h;
+    d += `${pen ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)} `; pen = true;
+  });
+  return d;
+}
+function renderIntonation(script, takes, natives) {
+  const sec = $('#intoSec');
+  if (!natives) { sec.hidden = true; return; }
+  const rows = script.sentences.map((s, si) => {
+    const nat = natives[si];
+    const mine = takes.map(t => t.contours[si]);
+    const cmp = compareIntonation(nat.contour, mine) || { issues: [], score: 0 };
+    // stress: which word sits highest
+    if (nat.contour && nat.contour.peak >= 0) {
+      const natWord = norm(nat.words[nat.contour.peak].text);
+      const mineWords = takes.map((t, ti) => mine[ti] && mine[ti].peak >= 0 ? norm(t.sentWords[si][mine[ti].peak].text) : null).filter(Boolean);
+      const differ = mineWords.filter(w => w !== natWord);
+      if (mineWords.length && differ.length >= Math.ceil(mineWords.length / 2)) {
+        const top = differ.sort((a, b) => differ.filter(x => x === b).length - differ.filter(x => x === a).length)[0];
+        cmp.issues.push({ kind: 'stress', text: `native voice stresses “${natWord}”, you stress “${top}”` });
+        cmp.score++;
+      }
+    }
+    return { si, s, nat, mine, cmp };
+  });
+  const W = 300, H = 70;
+  const box = (r) => {
+    const all = [r.nat.contour, ...r.mine].filter(Boolean).flatMap(c => c.curve).filter(v => v !== null);
+    const lo = Math.min(-6, ...all), hi = Math.max(6, ...all);
+    const paths = r.mine.filter(Boolean).map(c => `<path d="${curvePath(c.curve, W, H, lo, hi)}" class="me"/>`).join('');
+    const nat = r.nat.contour ? `<path d="${curvePath(r.nat.contour.curve, W, H, lo, hi)}" class="nat"/>` : '';
+    return `<svg viewBox="0 0 ${W} ${H}" class="contour" preserveAspectRatio="none">${paths}${nat}</svg>`;
+  };
+  const item = (r) => `<div class="into-item ${r.cmp.issues.length ? 'has' : ''}">
+      <div class="sent">${r.si + 1}. ${esc(r.s.text)}</div>
+      <div class="into-row">${box(r)}<audio controls preload="none" src="${r.nat.url}"></audio></div>
+      ${r.cmp.issues.length ? `<ul class="issues">${r.cmp.issues.map(i => `<li>${esc(i.text)}</li>`).join('')}</ul>` : '<div class="why">close to the native shape ✓</div>'}
+    </div>`;
+  const bad = rows.filter(r => r.cmp.issues.length).sort((a, b) => b.cmp.score - a.cmp.score);
+  const good = rows.filter(r => !r.cmp.issues.length);
+  $('#intoList').innerHTML = (bad.length ? bad.map(item).join('') : '<p>Your intonation follows the native shape everywhere. 🎉</p>')
+    + (good.length ? `<details class="detail"><summary>Sentences that already sound natural (${good.length})</summary>${good.map(item).join('')}</details>` : '');
+  sec.hidden = false;
 }
 
 $('#print').onclick = () => window.print();
