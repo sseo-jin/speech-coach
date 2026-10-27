@@ -105,25 +105,48 @@ export function analyzeTake(script, heard, opts = {}) {
     else if (o.t === 'del') { st.del++; st.badWords.push(o.s); }
     else { const n = H[o.h]; if (FILLERS.has(n)) st.fill++; else st.ins++; st.h.push(o.h); }
   }
+  // pauses: prefer real silences measured from the audio (Whisper word timestamps often swallow silence)
+  const betweenMin = opts.betweenMin ?? Math.max(1.3, pauseMin * 1.5);
+  const pauseMarks = [];
+  const sentOf = (j, dir) => { for (let k = j; k >= 0 && k < hw.length; k += dir) if (hToS.has(k)) return hToS.get(k); return undefined; };
+  if (opts.silences && opts.silences.length) {
+    for (const sil of opts.silences) {
+      const dur = sil.end - sil.start, mid = (sil.start + sil.end) / 2;
+      let j = hw.findIndex(w => (w.start + w.end) / 2 > mid);
+      if (j === -1) continue;                 // trailing silence
+      if (j === 0) continue;                  // leading silence
+      const sp = sentOf(j - 1, -1), sn = sentOf(j, 1);
+      if (sn === undefined) continue;
+      if (sp === sn) {
+        if (dur >= pauseMin) { per[sn].pauses++; per[sn].maxPause = Math.max(per[sn].maxPause, dur); pauseMarks.push({ before: j, dur, kind: 'in' }); }
+      } else if (dur >= betweenMin) {
+        per[sn].startPauses = (per[sn].startPauses || 0) + 1; per[sn].maxPause = Math.max(per[sn].maxPause, dur);
+        pauseMarks.push({ before: j, dur, kind: 'start' });
+      }
+    }
+  }
   per.forEach((st, si) => {
     const hs = st.h.slice().sort((a, b) => a - b);
     if (hs.length) {
       const t0 = hw[hs[0]].start, t1 = hw[hs[hs.length - 1]].end;
       st.dur = Math.max(0.01, t1 - t0);
-      for (let k = 1; k < hs.length; k++) {
-        const gap = hw[hs[k]].start - hw[hs[k - 1]].end;
-        if (gap >= pauseMin) { st.pauses++; st.maxPause = Math.max(st.maxPause, gap); }
+      if (!(opts.silences && opts.silences.length)) {
+        for (let k = 1; k < hs.length; k++) {
+          const gap = hw[hs[k]].start - hw[hs[k - 1]].end;
+          if (gap >= pauseMin) { st.pauses++; st.maxPause = Math.max(st.maxPause, gap); pauseMarks.push({ before: hs[k], dur: gap, kind: 'in' }); }
+        }
       }
       st.wpm = (st.ok + st.sub) / st.dur * 60;
     } else { st.dur = 0; st.wpm = 0; }
- const N = script.sentences[si].words.length;
+    st.startPauses = st.startPauses || 0;
+    const N = script.sentences[si].words.length;
     st.attempted = (st.ok + st.sub) / N >= 0.25;
     st.err = (st.sub + st.del) / N;
-    st.score = !st.attempted ? 0 : st.err * 4 + st.pauses * 0.8 + st.fill * 0.6 + st.ins * 0.3 + (st.wpm && st.wpm < 80 ? 0.5 : 0);
+    st.score = !st.attempted ? 0 : st.err * 4 + st.pauses * 0.8 + st.startPauses * 0.8 + st.fill * 0.6 + st.ins * 0.3 + (st.wpm && st.wpm < 80 ? 0.5 : 0);
   });
   const total = hw.length ? hw[hw.length - 1].end - hw[0].start : 0;
   const wpm = total ? hw.length / total * 60 : 0;
-  return { ops, per, H, hw, total, wpm };
+  return { ops, per, H, hw, total, wpm, pauseMarks };
 }
 
 // Combine takes → ranked sentences
@@ -140,9 +163,11 @@ export function rankSentences(script, takes) {
     const reasons = [];
     const miss = rows.reduce((a, r) => a + r.del, 0), sub = rows.reduce((a, r) => a + r.sub, 0);
     const pauses = rows.reduce((a, r) => a + r.pauses, 0), fill = rows.reduce((a, r) => a + r.fill, 0);
+    const starts = rows.reduce((a, r) => a + (r.startPauses || 0), 0);
     if (miss) reasons.push(`skipped ${miss} word${miss > 1 ? 's' : ''}`);
     if (sub) reasons.push(`${sub} word${sub > 1 ? 's' : ''} heard differently`);
-    if (pauses) reasons.push(`${pauses} long pause${pauses > 1 ? 's' : ''}`);
+    if (starts) reasons.push(`stuck before starting ${starts}×`);
+    if (pauses) reasons.push(`${pauses} long pause${pauses > 1 ? 's' : ''} inside`);
     if (fill) reasons.push(`${fill} "um/uh"`);
     return { si, text: s.text, part: s.part, meanScore: rows.length ? meanScore : 0, troubled, nTakes, wordHits, reasons, skippedTakes, attemptedTakes: rows.length };
   });

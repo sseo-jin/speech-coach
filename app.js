@@ -88,6 +88,23 @@ async function toPCM(blob) {
   return out.getChannelData(0);
 }
 
+// silent stretches measured from the audio itself (seconds)
+function findSilences(pcm, minDur = 0.5) {
+  const hop = 320; // 20 ms at 16 kHz
+  const n = Math.floor(pcm.length / hop), rms = new Float32Array(n);
+  for (let i = 0; i < n; i++) { let a = 0; for (let k = i * hop; k < (i + 1) * hop; k++) a += pcm[k] * pcm[k]; rms[i] = Math.sqrt(a / hop); }
+  const sorted = Array.from(rms).sort((a, b) => a - b);
+  const floor = sorted[Math.floor(n * 0.1)] || 0, loud = sorted[Math.floor(n * 0.9)] || 0;
+  const thr = floor + (loud - floor) * 0.12;
+  const out = []; let st = -1;
+  for (let i = 0; i <= n; i++) {
+    const quiet = i < n && rms[i] < thr;
+    if (quiet && st < 0) st = i;
+    if (!quiet && st >= 0) { const s = st * 0.02, e = i * 0.02; if (e - s >= minDur) out.push({ start: s, end: e }); st = -1; }
+  }
+  return out;
+}
+
 // ---------- step 3
 const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 let jobId = 0; const pending = new Map();
@@ -115,8 +132,9 @@ $('#analyze').onclick = async () => {
       const base = i / state.takes.length, step = 1 / state.takes.length;
       setProgress(base, `Take ${i + 1}/${state.takes.length}: decoding audio…`);
       const pcm = await toPCM(state.takes[i].blob);
+      const silences = findSilences(pcm);
       const out = await transcribe(pcm, model, (t) => setProgress(base + step * 0.3, `Take ${i + 1}/${state.takes.length}: ${t}`));
-      results.push({ ...analyzeTake(script, out.words), text: out.text });
+      results.push({ ...analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value }), text: out.text });
       setProgress(base + step, `Take ${i + 1} done`);
     }
     setProgress(1, 'Done ✓');
@@ -160,14 +178,15 @@ function render(script, takes) {
     ${script.sentences.map((s, si) => `<tr><td>${si + 1}</td><td>${esc(s.text)}</td>${takes.map(t => t.per[si].attempted ? `<td class="c" style="background:${col(t.per[si].score)}" title="score ${t.per[si].score.toFixed(2)}">${t.per[si].score.toFixed(1)}</td>` : '<td class="c muted">—</td>').join('')}</tr>`).join('')}</table>`;
   // diffs
   $('#diffs').innerHTML = takes.map((t, ti) => {
-    let html = ''; let prevEnd = null;
+    let html = '';
+    const marks = new Map(t.pauseMarks.map(p => [p.before, p]));
     for (const o of t.ops) {
-      if (o.h !== undefined && prevEnd !== null && t.hw[o.h] && t.hw[o.h].start - prevEnd >= 0.8) html += `<span class="pause">⏸${(t.hw[o.h].start - prevEnd).toFixed(1)}s</span> `;
+      const pm = o.h !== undefined && marks.get(o.h);
+      if (pm) html += `<span class="pause" title="${pm.kind === 'start' ? 'stuck before this sentence' : 'pause inside the sentence'}">⏸${pm.dur.toFixed(1)}s</span> `;
       if (o.t === 'ok') html += `<span class="w-ok">${esc(t.hw[o.h].text)}</span> `;
       else if (o.t === 'sub') html += `<span class="w-sub" title="script: ${esc(script.words[o.s].raw)}">${esc(t.hw[o.h].text)}</span> `;
       else if (o.t === 'del') html += `<span class="w-del">${esc(script.words[o.s].raw)}</span> `;
       else html += `<span class="w-ins">${esc(t.hw[o.h].text)}</span> `;
-      if (o.h !== undefined && t.hw[o.h]) prevEnd = t.hw[o.h].end;
     }
     return `<h4>Take ${ti + 1} · ${t.total.toFixed(0)} s</h4><div class="diff">${html}</div>`;
   }).join('') + '<p class="muted">orange = heard differently · <s>red</s> = skipped · <i>grey</i> = extra words · ⏸ = long pause</p>';
