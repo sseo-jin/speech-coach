@@ -59,20 +59,11 @@ table.heat td.c{text-align:center;width:56px}
 .plan h3{margin:0}
 .plan .price{font-size:28px;font-weight:800;margin:4px 0}
 .plan.pro{border-color:var(--accent)}
-.into-item{border-left:4px solid var(--ok);background:#f4fbf5;border-radius:8px;padding:10px 12px;margin:8px 0}
-.into-item.has{border-left-color:var(--warn);background:#fffaeb}
-.into-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px}
-.into-row audio{height:32px;min-width:0;flex:1}
-svg.contour{width:300px;max-width:100%;height:70px;background:#fff;border:1px solid var(--line);border-radius:6px}
-svg.contour path{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-svg.contour path.nat{stroke:#1c7ed6;stroke-width:3}
-svg.contour path.me{stroke:#f08c00;opacity:.55}
-.issues{margin:6px 0 0;padding-left:18px;font-size:14px}
 footer{max-width:900px;margin:0 auto;padding:0 16px 30px}
 @media print{
   body{background:#fff}
   .top,.step:not(#cardsSec),.pricing,footer,#cardsSec h2,#cardsSec .hint,#cardsSec .row{display:none!important}
   #cardsSec{border:none;padding:0;margin:0}
   .cards{display:block}
-  .card{width:148mm;height:98mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt}
+  .card{width:148mm;min-height:95mm;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt}
 }
