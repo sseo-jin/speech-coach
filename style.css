@@ -65,5 +65,5 @@ footer{max-width:900px;margin:0 auto;padding:0 16px 30px}
   .top,.step:not(#cardsSec),.pricing,footer,#cardsSec h2,#cardsSec .hint,#cardsSec .row{display:none!important}
   #cardsSec{border:none;padding:0;margin:0}
   .cards{display:block}
-  .card{width:148mm;min-height:95mm;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt}
+  .card{width:148mm;height:98mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt}
 }

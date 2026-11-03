@@ -15,3 +15,5 @@ python3 -m http.server 5178
 then open http://localhost:5178
 
 Built 2026-10-27 as a demonstrative-speech topic idea for 영어발표 (SKKU).
+
+Cue cards print at 148×98 mm — the course rule is "no larger than 10 × 15 cm".
