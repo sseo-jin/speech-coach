@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 <header class="top">
@@ -22,6 +22,12 @@
 </header>
 
 <main>
+  <!-- shown instead of the steps until the user logs in (only when accounts are set up in config.js) -->
+  <section class="step gate" id="gate">
+    <h2>Log in to start practicing</h2>
+    <p class="hint">Your scores are saved to your account, so you can see your progress on any computer.</p>
+    <div class="row"><button class="primary big" data-act="login">Log in</button><button class="ghost big" data-act="login">Sign up</button></div>
+  </section>
   <!-- 1 PASTE -->
   <section class="step" id="step1">
     <h2><span class="n">1</span> Paste your script</h2>

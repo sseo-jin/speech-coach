@@ -191,6 +191,13 @@ dialog#auth .err{min-height:20px;margin:12px 0 4px;font-size:14px;color:var(--mu
 dialog#auth .close{margin-left:auto}
 button.danger{color:#c92a2a}
 
+/* login gate: without an account only the gate is shown */
+.gate{display:none;text-align:center}
+.gate h2{justify-content:center}
+.gate .row{justify-content:center}
+body.locked .gate{display:block}
+body.locked main .step:not(.gate),body.locked .steps-nav{display:none}
+
 /* ---------- pricing page */
 .pricing-page .plans{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
 .pricing-page .plan{padding:30px 28px;display:flex;flex-direction:column;position:relative}

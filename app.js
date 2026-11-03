@@ -20,18 +20,20 @@ const demo = await fetch('demo.json', { cache: 'no-cache' }).then(r => r.ok ? r.
 
 // ---------- accounts
 function renderAcct() {
+  document.body.classList.toggle('locked', cloud.enabled && !cloud.user);
   if (!cloud.enabled) return;
   $('#acct').innerHTML = cloud.user
     ? `<span class="who">${esc(cloud.user.email)}</span><a href="#" data-act="logout">Log out</a>`
     : `<a href="#" data-act="login">Log in</a>`;
 }
+document.body.classList.toggle('locked', cloud.enabled); // until we know who is logged in
 await initCloud(() => { renderAcct(); if (shownKey) saveAndShowHistory(shownKey, null); }).catch(() => { cloud.enabled = false; });
 renderAcct();
 document.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
   e.preventDefault();
   if (act === 'login') { $('#authErr').textContent = ''; $('#auth').showModal(); }
-  if (act === 'logout') logOut();
+  if (act === 'logout') { store.del('sc:lastResult'); $('#results').hidden = true; logOut(); }
   if (act === 'close') $('#auth').close();
 });
 async function auth(kind) {
