@@ -30,14 +30,14 @@ export async function logIn(email, password) {
 }
 export const logOut = () => sb.auth.signOut();
 
-// history rows → the same shape the chart uses: {t, score, takes, stuck}
+// history rows → the same shape the chart uses: {t, score, takes, stuck, missed}
 export async function listScores(scriptKey) {
-  const { data, error } = await sb.from('scores').select('score,takes,stuck,created_at').eq('script_key', scriptKey).order('created_at').limit(30);
+  const { data, error } = await sb.from('scores').select('score,takes,stuck,missed,created_at').eq('script_key', scriptKey).order('created_at').limit(30);
   if (error) throw error;
-  return data.map(r => ({ t: Date.parse(r.created_at), score: r.score, takes: r.takes, stuck: r.stuck }));
+  return data.map(r => ({ t: Date.parse(r.created_at), score: r.score, takes: r.takes, stuck: r.stuck, missed: r.missed }));
 }
 export async function addScore(scriptKey, h) {
-  const { error } = await sb.from('scores').insert({ script_key: scriptKey, score: h.score, takes: h.takes, stuck: h.stuck });
+  const { error } = await sb.from('scores').insert({ script_key: scriptKey, score: h.score, takes: h.takes, stuck: h.stuck, missed: h.missed });
   if (error) throw error;
 }
 export async function clearScores(scriptKey) {

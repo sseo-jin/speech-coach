@@ -129,15 +129,19 @@ function renderTakes() {
   const ul = $('#takes'); ul.innerHTML = '';
   state.takes.forEach((t, i) => {
     const li = document.createElement('li');
-    li.innerHTML = `<b>Take ${i + 1}</b><span class="muted">${esc(t.name)}</span><audio controls src="${t.url}"></audio><button class="x" title="remove">✕</button>`;
+    li.innerHTML = `<b>Your take</b><span class="muted">${esc(t.name)}</span><audio controls src="${t.url}"></audio><button class="x" title="remove">✕</button>`;
     li.querySelector('.x').onclick = () => { URL.revokeObjectURL(t.url); state.takes.splice(i, 1); renderTakes(); };
     ul.appendChild(li);
   });
-  if (state.takes.length && state.takes.length < 3) ul.insertAdjacentHTML('beforeend', `<li class="muted tip">${3 - state.takes.length} more take${state.takes.length === 2 ? '' : 's'} for the best results</li>`);
   refreshAnalyze();
 }
-function addTake(blob, name) { state.takes.push({ blob, name, url: URL.createObjectURL(blob) }); renderTakes(); }
-$('#files').onchange = (e) => { [...e.target.files].forEach(f => addTake(f, f.name)); e.target.value = ''; };
+// one take at a time: a new recording or upload replaces the old one
+function addTake(blob, name) {
+  state.takes.forEach(t => URL.revokeObjectURL(t.url));
+  state.takes = [{ blob, name, url: URL.createObjectURL(blob) }];
+  renderTakes();
+}
+$('#files').onchange = (e) => { const f = e.target.files[0]; if (f) addTake(f, f.name); e.target.value = ''; };
 
 let rec = null, recStart = 0, recTimer = null;
 $('#recBtn').onclick = async () => {
@@ -347,7 +351,7 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
   // weak sentences
   $('#weak').innerHTML = weak.length ? weak.map(w => `
     <div class="weak-item"><div class="sent">${sentenceHTML(script, w.si, w.wordHits, w.nTakes)}</div>
-    <div class="why">stuck in ${w.troubled}/${w.nTakes} takes · ${w.reasons.join(' · ') || 'slow'}</div></div>`).join('')
+    <div class="why">${w.nTakes > 1 ? `stuck in ${w.troubled}/${w.nTakes} takes · ` : ''}${w.reasons.join(' · ') || 'slow'}</div></div>`).join('')
     : '<p class="muted">No sentence keeps tripping you up. Nice! 🎉</p>';
   const unpracticed = ranked.filter(x => x.skippedTakes > 0);
   if (unpracticed.length && unpracticed.length <= 6) $('#weak').innerHTML += `<p class="muted" style="margin-top:12px">Not practiced in some takes (not counted as weak): ${unpracticed.map(x => `#${x.si + 1} (${x.skippedTakes}/${takes.length})`).join(', ')}</p>`;
@@ -373,7 +377,8 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
   $('#cardsSec').hidden = false;
 
   // repeat: save this run, draw the trend
-  saveAndShowHistory(scriptKey, sample ? null : { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
+  histScript = script;
+  saveAndShowHistory(scriptKey, sample ? null : { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length, missed: weak.map(w => w.si) });
 
   if (scroll) $('#results').scrollIntoView({ behavior: 'smooth' });
 }
@@ -421,7 +426,7 @@ function renderPron(script, take, ti, pron, pronErr, label) {
 const histKey = (k) => `sc:hist:${k}`;
 const localHist = (k) => store.get(histKey(k), null) ?? (demo && k === demo.scriptKey ? [...(demo.history || [])] : []);
 const loadHist = (k) => cloud.user ? listScores(k) : localHist(k);
-let shownKey = null;
+let shownKey = null, histScript = null;
 async function saveAndShowHistory(k, entry) {
   shownKey = k;
   try {
@@ -450,6 +455,19 @@ function renderHistory(hist) {
       <text x="${x(i)}" y="${y(h.score) - 11}" text-anchor="middle" class="val">${h.score}</text>
       <text x="${x(i)}" y="${H - 6}" text-anchor="middle" class="axis">#${i + 1}</text>`).join('')}
   </svg>`;
+  renderMissed(hist);
+}
+// sentences you got stuck on most often, counted over every saved run (runs saved before this existed have no list)
+function renderMissed(hist) {
+  const runs = hist.filter(h => Array.isArray(h.missed));
+  const count = new Map();
+  runs.forEach(h => h.missed.forEach(si => count.set(si, (count.get(si) || 0) + 1)));
+  const top = [...count.entries()].filter(([si, n]) => n >= 2 && histScript?.sentences[si]).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3);
+  $('#missed').innerHTML = runs.length < 2 ? '' : top.length
+    ? `<h3 class="sec">🔁 Sentences you miss most often</h3>` + top.map(([si, n]) => `
+      <div class="weak-item"><div class="sent">“${snippet(histScript.sentences[si].text, 12)}”</div>
+      <div class="why">stuck in ${n} of ${runs.length} runs</div></div>`).join('')
+    : `<p class="muted">No sentence keeps coming back across your ${runs.length} runs. 🎉</p>`;
 }
 $('#clearHist').onclick = async () => {
   if (!shownKey || !confirm('Clear the score history for this script?')) return;

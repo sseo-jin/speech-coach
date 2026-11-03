@@ -47,10 +47,10 @@
   <!-- 2 RECORD -->
   <section class="step" id="step2">
     <h2><span class="n">2</span> Record your voice</h2>
-    <p class="hint">Record right here, or upload a file you recorded before (m4a, mp3, wav…). Try to record about three times.</p>
+    <p class="hint">Record right here, or upload a file you recorded before (m4a, mp3, wav…). A new take replaces the old one.</p>
     <div class="row">
       <button id="recBtn" class="big">● Record</button>
-      <label class="btn big">⬆ Upload<input id="files" type="file" accept="audio/*,video/*" multiple hidden></label>
+      <label class="btn big">⬆ Upload<input id="files" type="file" accept="audio/*,video/*" hidden></label>
       <span id="recTime" class="muted"></span>
     </div>
     <ul id="takes" class="takes"></ul>
@@ -76,7 +76,7 @@
       <div id="timeSpeed" class="summary"></div>
       <h3 class="sec">⏸ Where you stopped for more than 2 seconds</h3>
       <div id="stops"></div>
-      <h3 class="sec">🔴 Sentences you got stuck on every time</h3>
+      <h3 class="sec">🔴 Sentences you got stuck on</h3>
       <div id="weak"></div>
       <h3 class="sec">🗣 Pronunciation <span id="pronScores" class="muted"></span></h3>
       <p id="pronHint" class="hint"></p>
@@ -95,9 +95,10 @@
   <!-- 5 REPEAT -->
   <section class="step" id="repeatSec" hidden>
     <h2><span class="n">5</span> Repeat</h2>
-    <p class="hint">Every time you analyze this script, your Ready score is saved here (only in this browser).</p>
+    <p class="hint">Every time you analyze this script, your Ready score and the sentences you got stuck on are saved to your account.</p>
     <div id="trend" class="trend"></div>
     <div id="graph"></div>
+    <div id="missed"></div>
     <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button><button id="resetAll" class="ghost danger">Reset all my scores</button><button id="saveDemo" class="ghost" hidden>Save as demo.json</button></div>
   </section>
 
