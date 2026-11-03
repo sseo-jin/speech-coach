@@ -4,10 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="top">
+  <nav class="topbar"><a class="brand" href="index.html">Speech Coach</a><span><a href="index.html" aria-current="page">Coach</a><a href="pricing.html">Pricing</a></span></nav>
   <h1>Speech <em>Coach</em></h1>
   <p class="sub">Your AI presentation coach. See exactly where to practice, and walk in ready.</p>
   <ul class="steps-nav">
@@ -58,22 +59,9 @@
     <div class="row">
       <button id="analyze" class="primary big" disabled>Analyze</button>
       <label class="toggle"><input type="checkbox" id="pronOn"> Check pronunciation <span class="muted">(Microsoft)</span></label>
-      <details class="settings"><summary class="muted">Settings</summary>
-        <div class="row">
-          <label class="muted">Speech model
-            <select id="model">
-              <option value="onnx-community/whisper-base.en_timestamped" selected>base (fast)</option>
-              <option value="onnx-community/whisper-small.en_timestamped">small (more accurate, slower)</option>
-            </select>
-          </label>
-          <label class="muted">Pause ≥ <select id="pauseMin"><option value="0.5">0.5 s</option><option value="0.8" selected>0.8 s</option><option value="1.2">1.2 s</option></select></label>
-        </div>
-        <div class="row">
-          <label class="muted">Azure Speech key <input id="azKey" type="password" autocomplete="off" size="28"></label>
-          <label class="muted">Region <input id="azRegion" placeholder="swedencentral" size="12"></label>
-        </div>
-        <p class="muted">The key is saved only in this browser. Pronunciation is checked on your latest take only.</p>
-      </details>
+      <input type="hidden" id="model" value="onnx-community/whisper-base.en_timestamped">
+      <input type="hidden" id="pauseMin" value="0.8">
+      <input type="hidden" id="azKey"><input type="hidden" id="azRegion">
     </div>
     <p id="pronNote" class="consent" hidden>With the pronunciation check on, your latest take is sent to Microsoft Azure to be scored. Everything else stays in this browser.</p>
     <div id="progress" class="progress" hidden><div class="bar"><div id="bar"></div></div><span id="status"></span></div>
@@ -111,16 +99,9 @@
     <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button></div>
   </section>
 
-  <section class="pricing">
-    <h2>Pricing</h2>
-    <div class="plans">
-      <div class="plan"><h3>Free</h3><p class="price">$0</p><p>Unlimited takes. Ready score. Cue cards.</p></div>
-      <div class="plan pro"><h3>Pro</h3><p class="price">$99</p><p>Jin Seo comes to your house and listens to your speech. In person.<br><span class="muted">(please don't)</span></p></div>
-    </div>
-  </section>
 </main>
 
-<footer class="muted">Made by Jin Seo · Whisper in your browser · pronunciation by Microsoft Azure AI Speech</footer>
+<footer class="muted"><a href="pricing.html">Pricing</a> · Made by Jin Seo · Whisper in your browser · pronunciation by Microsoft Azure AI Speech</footer>
 <audio id="player" hidden></audio>
 <script src="config.local.js"></script>
 <script type="module" src="app.js"></script>

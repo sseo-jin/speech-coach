@@ -167,6 +167,37 @@ table.heat td.c{text-align:center;width:56px}
 .plan.pro .muted{color:rgba(255,255,255,.55)}
 footer{max-width:920px;margin:0 auto;padding:10px 16px 40px;text-align:center}
 
+
+/* ---------- top bar (both pages) */
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:40px}
+.topbar a{color:rgba(255,255,255,.72);text-decoration:none;font-size:14.5px;font-weight:500}
+.topbar a:hover{color:#fff}
+.topbar .brand{color:#fff;font-weight:700;letter-spacing:-.2px}
+.topbar span{display:flex;gap:6px}
+.topbar span a{padding:6px 12px;border-radius:999px}
+.topbar span a[aria-current]{background:rgba(255,255,255,.12);color:#fff}
+footer a{color:var(--accent);text-decoration:none}
+
+/* ---------- pricing page */
+.pricing-page .plans{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.pricing-page .plan{padding:30px 28px;display:flex;flex-direction:column;position:relative}
+.plan .price span{font-size:15px;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:6px}
+.plan.pro .price span{color:rgba(255,255,255,.55)}
+.plan .tagline{margin:0 0 18px;color:var(--ink2);min-height:52px}
+.plan.pro .tagline{color:rgba(255,255,255,.8)}
+.feat{list-style:none;padding:0;margin:0 0 26px;display:grid;gap:10px;flex:1;align-content:start}
+.feat li{display:flex;gap:10px;align-items:flex-start;font-size:15px}
+.feat li::before{content:"✓";flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;margin-top:2px}
+.plan.pro .feat li::before{background:rgba(199,184,255,.18);color:#c7b8ff}
+.cta{display:block;text-align:center;padding:12px 18px;border-radius:14px;font-weight:600;text-decoration:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 6px 18px rgba(59,91,253,.32)}
+.plan.pro .cta{background:rgba(255,255,255,.1);box-shadow:none;color:rgba(255,255,255,.6);cursor:not-allowed}
+.badge{position:absolute;top:18px;right:18px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.faq{max-width:680px;margin:56px auto 0}
+.faq h2{justify-content:center;font:400 36px/1.1 "Instrument Serif",Georgia,serif;margin-bottom:16px}
+.faq details{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin:0 0 10px}
+.faq summary{cursor:pointer;font-weight:600}
+.faq p{margin:10px 0 2px;color:var(--ink2)}
+
 @media (max-width:640px){
   h1{font-size:46px}
   .top{padding:44px 16px 64px}

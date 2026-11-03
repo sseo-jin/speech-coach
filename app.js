@@ -102,19 +102,16 @@ $('#recBtn').onclick = async () => {
 
 function refreshAnalyze() { $('#analyze').disabled = !(state.takes.length && parseScript(scriptEl.value).words.length); }
 
-// ---------- 3 CHECK — settings
+// ---------- 3 CHECK — pronunciation key
 // config.local.js (git-ignored) can hold the key so it survives a cleared browser
 const local = window.SC_CONFIG || {};
 $('#azKey').value = store.get('sc:azKey', '') || local.azureKey || '';
 $('#azRegion').value = store.get('sc:azRegion', '') || local.azureRegion || '';
 $('#pronOn').checked = store.get('sc:pronOn', false);
 $('#pronNote').hidden = !$('#pronOn').checked;
-$('#azKey').onchange = () => store.set('sc:azKey', $('#azKey').value.trim());
-$('#azRegion').onchange = () => store.set('sc:azRegion', $('#azRegion').value.trim());
 $('#pronOn').onchange = () => {
   store.set('sc:pronOn', $('#pronOn').checked);
   $('#pronNote').hidden = !$('#pronOn').checked;
-  if ($('#pronOn').checked && !($('#azKey').value.trim() && $('#azRegion').value.trim())) $('.settings').open = true;
 };
 
 // ---------- audio → 16 kHz mono Float32
@@ -202,7 +199,7 @@ $('#analyze').onclick = async () => {
       const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim();
       const pKey = `sc:pron:${scriptKey}:${lastHash}`;
       pron = store.get(pKey, null);
-      if (!pron && !(key && region)) pronErr = 'Add your Azure Speech key and region in Settings to check pronunciation.';
+      if (!pron && !(key && region)) pronErr = 'Pronunciation check is not set up yet (no Azure key in config.local.js).';
       else if (!pron) {
         try {
           pron = await assess(script, lastWav, { key, region }, (t) => setProgress(0.97, t));
