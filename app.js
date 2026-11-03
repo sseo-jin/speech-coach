@@ -103,8 +103,10 @@ $('#recBtn').onclick = async () => {
 function refreshAnalyze() { $('#analyze').disabled = !(state.takes.length && parseScript(scriptEl.value).words.length); }
 
 // ---------- 3 CHECK — settings
-$('#azKey').value = store.get('sc:azKey', '');
-$('#azRegion').value = store.get('sc:azRegion', '');
+// config.local.js (git-ignored) can hold the key so it survives a cleared browser
+const local = window.SC_CONFIG || {};
+$('#azKey').value = store.get('sc:azKey', '') || local.azureKey || '';
+$('#azRegion').value = store.get('sc:azRegion', '') || local.azureRegion || '';
 $('#pronOn').checked = store.get('sc:pronOn', false);
 $('#pronNote').hidden = !$('#pronOn').checked;
 $('#azKey').onchange = () => store.set('sc:azKey', $('#azKey').value.trim());
