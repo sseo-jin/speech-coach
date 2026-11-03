@@ -320,24 +320,6 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false } = {}
   // pronunciation on the latest take — click a word to hear it
   renderPron(script, takes[last], last, pron, pronErr, takes[last].label);
 
-  // heatmap
-  const col = (v) => v < 0.4 ? '#d3f9d8' : v < 1 ? '#fff3bf' : '#ffd8c2';
-  $('#heat').innerHTML = `<table class="heat"><tr><th>#</th><th>Sentence</th>${takes.map(t => `<th>T${t.label}</th>`).join('')}</tr>
-    ${script.sentences.map((s, si) => `<tr><td>${si + 1}</td><td>${esc(s.text)}</td>${takes.map(t => t.per[si].attempted ? `<td class="c" style="background:${col(t.per[si].score)}" title="score ${t.per[si].score.toFixed(2)}">${t.per[si].score.toFixed(1)}</td>` : '<td class="c muted">—</td>').join('')}</tr>`).join('')}</table>`;
-  // diffs
-  $('#diffs').innerHTML = takes.map((t, ti) => {
-    let html = '';
-    const marks = new Map(t.pauseMarks.map(p => [p.before, p]));
-    for (const o of t.ops) {
-      const pm = o.h !== undefined && marks.get(o.h);
-      if (pm) html += `<span class="pause" title="${pm.kind === 'start' ? 'stuck before this sentence' : 'pause inside the sentence'}">⏸${pm.dur.toFixed(1)}s</span> `;
-      if (o.t === 'ok') html += `<span class="w-ok">${esc(t.hw[o.h].text)}</span> `;
-      else if (o.t === 'sub') html += `<span class="w-sub" title="script: ${esc(script.words[o.s].raw)}">${esc(t.hw[o.h].text)}</span> `;
-      else if (o.t === 'del') html += `<span class="w-del">${esc(script.words[o.s].raw)}</span> `;
-      else html += `<span class="w-ins">${esc(t.hw[o.h].text)}</span> `;
-    }
-    return `<h4>Take ${t.label} · ${fmt(t.total)}</h4><div class="diff">${html}</div>`;
-  }).join('') + '<p class="muted">orange = heard differently · <s>red</s> = skipped · <i>grey</i> = extra words · ⏸ = long pause</p>';
   $('#results').hidden = false;
 
   // cue cards (shown when "Make my cue card" is pressed)

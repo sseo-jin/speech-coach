@@ -129,10 +129,6 @@ mark.bad{background:#ffd3d0;color:#8f1d20;border-radius:4px;padding:0 3px;font-w
 .pron .w.playing{box-shadow:0 0 0 2px var(--accent2);background:#fff}
 .detail{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
 .detail summary{cursor:pointer;color:var(--accent);font-weight:600;font-size:14.5px}
-table.heat{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;margin-top:10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-table.heat td,table.heat th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
-table.heat th{background:#fbfaf7;color:var(--muted);font-weight:600}
-table.heat td.c{text-align:center;width:56px}
 .diff{font-size:14px;line-height:1.95;margin:8px 0 16px}
 .diff .w-sub{background:#ffe2c7;border-radius:4px}
 .diff .w-del{color:var(--weak);text-decoration:line-through}
