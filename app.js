@@ -438,9 +438,7 @@ function renderHistory(hist) {
   state.hist = hist;
   $('#repeatSec').hidden = !hist.length;
   if (!hist.length) return;
-  const recent = hist.slice(-6).map(h => h.score);
-  $('#trend').innerHTML = `Your Ready score: <b>${recent.join(' → ')}</b>` +
-    (hist.length > 1 ? ` <span class="muted">(${hist[hist.length - 1].score - hist[0].score >= 0 ? '+' : ''}${hist[hist.length - 1].score - hist[0].score} since your first try)</span>` : '');
+  $('#trend').textContent = '';
   const W = 640, H = 200, P = 34;
   const x = (i) => hist.length === 1 ? W / 2 : P + i * (W - 2 * P) / (hist.length - 1);
   const y = (v) => H - P + 10 - v / 100 * (H - 2 * P);
