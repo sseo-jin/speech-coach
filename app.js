@@ -44,7 +44,14 @@ How about going outside for just ten minutes tomorrow morning?
 Thank you for listening.`;
 
 const state = { takes: [], wavs: [] }; // takes: {name, blob, url} · wavs: 16 kHz WAV urls for exact replay
-const target = () => $('#target').value.split('-').map(Number);
+// "2:30" or "150" → seconds
+const toSec = (v) => { const [m, sec] = String(v).trim().split(':'); return sec === undefined ? +m : +m * 60 + +sec; };
+const target = () => {
+  let lo = toSec($('#tFrom').value), hi = toSec($('#tTo').value);
+  if (!(lo >= 0)) lo = 90; if (!(hi > 0)) hi = 120;
+  return lo <= hi ? [lo, hi] : [hi, lo];
+};
+for (const id of ['#tFrom', '#tTo']) $(id).value = store.get('sc:' + id.slice(1), $(id).value);
 
 // ---------- 1 PASTE
 const scriptEl = $('#script');
@@ -61,7 +68,7 @@ function updateScriptInfo() {
   refreshAnalyze();
 }
 scriptEl.addEventListener('input', updateScriptInfo);
-$('#target').onchange = updateScriptInfo;
+for (const id of ['#tFrom', '#tTo']) $(id).oninput = () => { store.set('sc:' + id.slice(1), $(id).value.trim()); updateScriptInfo(); };
 $('#wpm').onchange = updateScriptInfo;
 $('#loadSample').onclick = () => { scriptEl.value = SAMPLE; updateScriptInfo(); };
 
