@@ -191,6 +191,8 @@ dialog#auth .err{min-height:20px;margin:12px 0 4px;font-size:14px;color:var(--mu
 dialog#auth .close{margin-left:auto}
 button.danger{color:#c92a2a}
 
+#pron.noplay .w{cursor:default}
+
 /* login gate: without an account only the gate is shown */
 .gate{display:none;text-align:center}
 .gate h2{justify-content:center}

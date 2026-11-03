@@ -378,10 +378,14 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
 
 function renderPron(script, take, ti, pron, pronErr, label) {
   const words = script.words;
+  // sample result / result restored after a reload: no recording in memory, so nothing to replay
+  const canPlay = !!state.wavs[ti];
+  const clickTip = canPlay ? 'Click a word to hear your voice again.' : 'Upload your takes and press Analyze to hear your voice again.';
+  $('#pron').classList.toggle('noplay', !canPlay);
   let html = '';
   if (pron) {
     $('#pronScores').textContent = `· ${Math.round(pron.pron)}/100 — accuracy ${Math.round(pron.accuracy)} · fluency ${Math.round(pron.fluency)} · completeness ${Math.round(pron.completeness)}${pron.prosody !== undefined ? ` · intonation ${Math.round(pron.prosody)}` : ''}`;
-    $('#pronHint').textContent = `Take ${label}. Red words were not clear. Click a word to hear your voice again.`;
+    $('#pronHint').textContent = `Take ${label}. Red words were not clear. ${clickTip}`;
     const map = pron.words;
     html = words.map((w, wi) => {
       const p = map[wi];
@@ -393,7 +397,7 @@ function renderPron(script, take, ti, pron, pronErr, label) {
     // without Microsoft: words the speech model heard differently are the unclear ones
     $('#pronScores').textContent = '';
     $('#pronHint').innerHTML = (pronErr ? `<span class="bad">${esc(pronErr)}</span> ` : '') +
-      `Take ${label}. Red words are the ones the AI heard differently. Click one to hear your voice again.${pronErr ? '' : ' Turn on “Check pronunciation” for word-by-word scores.'}`;
+      `Take ${label}. Red words are the ones the AI heard differently. ${clickTip}${pronErr ? '' : ' Turn on “Check pronunciation” for word-by-word scores.'}`;
     const bySrc = {};
     for (const o of take.ops) if (o.s !== undefined) bySrc[o.s] = o;
     html = words.map((w, wi) => {
