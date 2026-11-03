@@ -3,83 +3,125 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Speech Coach — find your weak sentences</title>
+<title>Speech Coach — your AI presentation coach</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
-  <h1>Speech Coach</h1>
-  <p class="sub">Practice a few times. We find the sentences you keep stumbling on, and turn them into cue cards.</p>
-  <p class="privacy">🔒 Your recordings never leave this browser. Speech-to-text runs on your device.</p>
+  <h1>Speech <em>Coach</em></h1>
+  <p class="sub">Your AI presentation coach. See exactly where to practice, and walk in ready.</p>
+  <ul class="steps-nav">
+    <li><a href="#step1"><i>1</i>Paste</a></li>
+    <li><a href="#step2"><i>2</i>Record</a></li>
+    <li><a href="#step3"><i>3</i>Check</a></li>
+    <li><a href="#cardsSec"><i>4</i>Practice</a></li>
+    <li><a href="#repeatSec"><i>5</i>Repeat</a></li>
+  </ul>
+  <p class="privacy">🔒 Speech-to-text runs in this browser. Your recordings stay on your device unless you turn on the pronunciation check.</p>
 </header>
 
 <main>
-  <!-- STEP 1 -->
+  <!-- 1 PASTE -->
   <section class="step" id="step1">
     <h2><span class="n">1</span> Paste your script</h2>
-    <p class="hint">Leave a blank line between parts (intro, body 1, body 2…). Each part becomes one cue card.</p>
+    <p class="hint">Your script works like an answer key. Leave a blank line between parts (intro, body 1, body 2…). Each part becomes one cue card.</p>
     <textarea id="script" rows="12" placeholder="Hello everyone, my name is …"></textarea>
+    <div id="expect" class="expect" hidden></div>
     <div class="row">
+      <label class="muted">Target time
+        <select id="target">
+          <option value="90-120">1:30 – 2:00 (informative)</option>
+          <option value="150-180" selected>2:30 – 3:00 (demonstrative)</option>
+          <option value="180-210">3:00 – 3:30 (persuasive)</option>
+        </select>
+      </label>
+      <label class="muted">My speed <select id="wpm"><option>115</option><option selected>125</option><option>135</option><option>145</option></select> wpm</label>
       <button id="loadSample" class="ghost">Load sample script</button>
-      <span id="scriptInfo" class="muted"></span>
     </div>
   </section>
 
-  <!-- STEP 2 -->
+  <!-- 2 RECORD -->
   <section class="step" id="step2">
-    <h2><span class="n">2</span> Add your practice takes</h2>
-    <p class="hint">Upload recordings (m4a, mp3, wav…) or record right here. Three takes or more works best.</p>
+    <h2><span class="n">2</span> Record your voice</h2>
+    <p class="hint">Record right here, or upload a file you recorded before (m4a, mp3, wav…). Try to record about three times.</p>
     <div class="row">
-      <label class="btn">Upload files<input id="files" type="file" accept="audio/*,video/*" multiple hidden></label>
-      <button id="recBtn">● Record a take</button>
+      <button id="recBtn" class="big">● Record</button>
+      <label class="btn big">⬆ Upload<input id="files" type="file" accept="audio/*,video/*" multiple hidden></label>
       <span id="recTime" class="muted"></span>
     </div>
     <ul id="takes" class="takes"></ul>
   </section>
 
-  <!-- STEP 3 -->
+  <!-- 3 CHECK -->
   <section class="step" id="step3">
-    <h2><span class="n">3</span> Analyze</h2>
+    <h2><span class="n">3</span> Check your score</h2>
     <div class="row">
-      <label class="muted">Model
-        <select id="model">
-          <option value="onnx-community/whisper-base.en_timestamped" selected>base (fast)</option>
-          <option value="onnx-community/whisper-small.en_timestamped">small (more accurate, slower)</option>
-        </select>
-      </label>
-      <label class="muted">Pause ≥ <select id="pauseMin"><option value="0.5">0.5 s</option><option value="0.8" selected>0.8 s</option><option value="1.2">1.2 s</option></select></label>
-      <button id="analyze" class="primary" disabled>Analyze my takes</button>
+      <button id="analyze" class="primary big" disabled>Analyze</button>
+      <label class="toggle"><input type="checkbox" id="pronOn"> Check pronunciation <span class="muted">(Microsoft)</span></label>
+      <details class="settings"><summary class="muted">Settings</summary>
+        <div class="row">
+          <label class="muted">Speech model
+            <select id="model">
+              <option value="onnx-community/whisper-base.en_timestamped" selected>base (fast)</option>
+              <option value="onnx-community/whisper-small.en_timestamped">small (more accurate, slower)</option>
+            </select>
+          </label>
+          <label class="muted">Pause ≥ <select id="pauseMin"><option value="0.5">0.5 s</option><option value="0.8" selected>0.8 s</option><option value="1.2">1.2 s</option></select></label>
+        </div>
+        <div class="row">
+          <label class="muted">Azure Speech key <input id="azKey" type="password" autocomplete="off" size="28"></label>
+          <label class="muted">Region <input id="azRegion" placeholder="koreacentral" size="12"></label>
+        </div>
+        <p class="muted">The key is saved only in this browser. Pronunciation is checked on your latest take only.</p>
+      </details>
     </div>
+    <p id="pronNote" class="consent" hidden>With the pronunciation check on, your latest take is sent to Microsoft Azure to be scored. Everything else stays in this browser.</p>
     <div id="progress" class="progress" hidden><div class="bar"><div id="bar"></div></div><span id="status"></span></div>
+
+    <div id="results" hidden>
+      <div id="ready" class="ready"></div>
+      <h3 class="sec">⏱ Time and speed</h3>
+      <div id="timeSpeed" class="summary"></div>
+      <h3 class="sec">⏸ Where you stopped for more than 2 seconds</h3>
+      <div id="stops"></div>
+      <h3 class="sec">🔴 Sentences you got stuck on every time</h3>
+      <div id="weak"></div>
+      <h3 class="sec">🗣 Pronunciation <span id="pronScores" class="muted"></span></h3>
+      <p id="pronHint" class="hint"></p>
+      <div id="pron" class="pron"></div>
+      <details class="detail"><summary>Sentence × take heatmap</summary><div id="heat"></div></details>
+      <details class="detail"><summary>What each take sounded like</summary><div id="diffs"></div></details>
+    </div>
   </section>
 
-  <!-- STEP 4 -->
-  <section class="step" id="results" hidden>
-    <h2><span class="n">4</span> Your weak sentences</h2>
-    <div id="summary" class="summary"></div>
-    <div id="weak"></div>
-    <details class="detail"><summary>Sentence × take heatmap</summary><div id="heat"></div></details>
-    <details class="detail"><summary>What each take sounded like</summary><div id="diffs"></div></details>
-  </section>
-
-  <!-- STEP 5 -->
+  <!-- 4 PRACTICE -->
   <section class="step" id="cardsSec" hidden>
-    <h2><span class="n">5</span> Your cue cards</h2>
-    <p class="hint">Strong sentences show only the first words. Weak ones show the full sentence with the tricky words marked.</p>
-    <div class="row"><button id="print" class="primary">Print / save as PDF</button></div>
-    <div id="cards" class="cards"></div>
+    <h2><span class="n">4</span> Practice with a cue card</h2>
+    <p class="hint">Only your weak parts are written out in full, in big letters. Strong sentences show just the first words.</p>
+    <div class="row"><button id="makeCards" class="primary big">Make my cue card</button><button id="print" hidden>🖨 Print</button></div>
+    <div id="cards" class="cards" hidden></div>
+  </section>
+
+  <!-- 5 REPEAT -->
+  <section class="step" id="repeatSec" hidden>
+    <h2><span class="n">5</span> Repeat</h2>
+    <p class="hint">Every time you analyze this script, your Ready score is saved here (only in this browser).</p>
+    <div id="trend" class="trend"></div>
+    <div id="graph"></div>
+    <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button></div>
   </section>
 
   <section class="pricing">
     <h2>Pricing</h2>
     <div class="plans">
-      <div class="plan"><h3>Free</h3><p class="price">$0</p><p>Unlimited takes. Cue cards. Your audio stays with you.</p></div>
-      <div class="plan pro"><h3>Pro</h3><p class="price">$999</p><p>We give the speech for you.<br><span class="muted">(coming never)</span></p></div>
+      <div class="plan"><h3>Free</h3><p class="price">$0</p><p>Unlimited takes. Ready score. Cue cards.</p></div>
+      <div class="plan pro"><h3>Pro</h3><p class="price">$99</p><p>Jin Seo comes to your house and listens to your speech. In person.<br><span class="muted">(please don't)</span></p></div>
     </div>
   </section>
 </main>
 
-<footer class="muted">Made by Jin Seo · runs on Whisper in your browser</footer>
+<footer class="muted">Made by Jin Seo · Whisper in your browser · pronunciation by Microsoft Azure AI Speech</footer>
+<audio id="player" hidden></audio>
 <script type="module" src="app.js"></script>
 </body>
 </html>

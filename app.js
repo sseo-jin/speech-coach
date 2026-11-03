@@ -1,7 +1,22 @@
 import { parseScript, analyzeTake, rankSentences, pickWeak } from './align.js';
+import { readyScore, fmt, LONG_PAUSE } from './score.js';
+import { assess, toWav } from './pron.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// localStorage can be missing (private window) — never let it break the page
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* full or blocked */ } },
+  del(k) { try { localStorage.removeItem(k); } catch { /* blocked */ } },
+};
+
+async function sha(data) {
+  const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const h = await crypto.subtle.digest('SHA-256', buf);
+  return [...new Uint8Array(h)].slice(0, 12).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 const SAMPLE = `Hello everyone, my name is Jin Seo.
 Many people think that sunlight only gives us warmth and light. But it does much more.
@@ -28,19 +43,29 @@ Sunlight does much more than just keep us warm. It keeps our lives healthy.
 How about going outside for just ten minutes tomorrow morning?
 Thank you for listening.`;
 
-const state = { takes: [] }; // {name, blob, url}
+const state = { takes: [], wavs: [] }; // takes: {name, blob, url} · wavs: 16 kHz WAV urls for exact replay
+const target = () => $('#target').value.split('-').map(Number);
 
-// ---------- step 1
+// ---------- 1 PASTE
 const scriptEl = $('#script');
+scriptEl.value = store.get('sc:script', '');
 function updateScriptInfo() {
   const sc = parseScript(scriptEl.value);
-  $('#scriptInfo').textContent = sc.words.length ? `${sc.parts.length} parts · ${sc.sentences.length} sentences · ${sc.words.length} words (~${Math.round(sc.words.length / 125 * 60)} s at 125 wpm)` : '';
+  store.set('sc:script', scriptEl.value);
+  const ex = $('#expect');
+  if (!sc.words.length) { ex.hidden = true; refreshAnalyze(); return; }
+  const sec = sc.words.length / +$('#wpm').value * 60, [lo, hi] = target();
+  const fit = sec < lo ? `<span class="warn">⚠ ${fmt(lo - sec)} short</span>` : sec > hi ? `<span class="bad">⚠ ${fmt(sec - hi)} too long</span>` : '<span class="good">✅ fits your target</span>';
+  ex.innerHTML = `<div><b>${fmt(sec)}</b>expected time</div><div><b>${sc.words.length}</b>words</div><div><b>${sc.sentences.length}</b>sentences</div><div class="fit">${fit}<span class="muted">at ${$('#wpm').value} words / min · target ${fmt(lo)}–${fmt(hi)}</span></div>`;
+  ex.hidden = false;
   refreshAnalyze();
 }
 scriptEl.addEventListener('input', updateScriptInfo);
+$('#target').onchange = updateScriptInfo;
+$('#wpm').onchange = updateScriptInfo;
 $('#loadSample').onclick = () => { scriptEl.value = SAMPLE; updateScriptInfo(); };
 
-// ---------- step 2
+// ---------- 2 RECORD
 function renderTakes() {
   const ul = $('#takes'); ul.innerHTML = '';
   state.takes.forEach((t, i) => {
@@ -49,6 +74,7 @@ function renderTakes() {
     li.querySelector('.x').onclick = () => { URL.revokeObjectURL(t.url); state.takes.splice(i, 1); renderTakes(); };
     ul.appendChild(li);
   });
+  if (state.takes.length && state.takes.length < 3) ul.insertAdjacentHTML('beforeend', `<li class="muted tip">${3 - state.takes.length} more take${state.takes.length === 2 ? '' : 's'} for the best results</li>`);
   refreshAnalyze();
 }
 function addTake(blob, name) { state.takes.push({ blob, name, url: URL.createObjectURL(blob) }); renderTakes(); }
@@ -65,20 +91,32 @@ $('#recBtn').onclick = async () => {
     rec.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
       clearInterval(recTimer); $('#recTime').textContent = '';
-      $('#recBtn').textContent = '● Record a take'; $('#recBtn').classList.remove('rec');
+      $('#recBtn').textContent = '● Record'; $('#recBtn').classList.remove('rec');
       addTake(new Blob(chunks, { type: rec.mimeType }), `recorded ${new Date().toLocaleTimeString()}`);
     };
     rec.start(); recStart = Date.now();
     $('#recBtn').textContent = '■ Stop'; $('#recBtn').classList.add('rec');
-    recTimer = setInterval(() => { $('#recTime').textContent = `${((Date.now() - recStart) / 1000).toFixed(0)} s`; }, 250);
+    recTimer = setInterval(() => { $('#recTime').textContent = fmt((Date.now() - recStart) / 1000); }, 250);
   } catch (err) { alert('Microphone not available: ' + err.message); }
 };
 
 function refreshAnalyze() { $('#analyze').disabled = !(state.takes.length && parseScript(scriptEl.value).words.length); }
 
+// ---------- 3 CHECK — settings
+$('#azKey').value = store.get('sc:azKey', '');
+$('#azRegion').value = store.get('sc:azRegion', '');
+$('#pronOn').checked = store.get('sc:pronOn', false);
+$('#pronNote').hidden = !$('#pronOn').checked;
+$('#azKey').onchange = () => store.set('sc:azKey', $('#azKey').value.trim());
+$('#azRegion').onchange = () => store.set('sc:azRegion', $('#azRegion').value.trim());
+$('#pronOn').onchange = () => {
+  store.set('sc:pronOn', $('#pronOn').checked);
+  $('#pronNote').hidden = !$('#pronOn').checked;
+  if ($('#pronOn').checked && !($('#azKey').value.trim() && $('#azRegion').value.trim())) $('.settings').open = true;
+};
+
 // ---------- audio → 16 kHz mono Float32
-async function toPCM(blob) {
-  const buf = await blob.arrayBuffer();
+async function toPCM(buf) {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   const decoded = await ctx.decodeAudioData(buf);
   ctx.close();
@@ -105,7 +143,6 @@ function findSilences(pcm, minDur = 0.5) {
   return out;
 }
 
-// ---------- step 3
 const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 let jobId = 0; const pending = new Map();
 worker.onmessage = (e) => {
@@ -125,26 +162,79 @@ function setProgress(frac, text) { $('#progress').hidden = false; $('#bar').styl
 $('#analyze').onclick = async () => {
   const script = parseScript(scriptEl.value);
   const model = $('#model').value;
+  const scriptKey = await sha(script.words.map(w => w.n).join(' '));
   $('#analyze').disabled = true;
   const results = [];
+  state.wavs.forEach(u => URL.revokeObjectURL(u)); state.wavs = [];
+  let lastWav = null, lastHash = '';
+  const unheard = [];
   try {
-    for (let i = 0; i < state.takes.length; i++) {
-      const base = i / state.takes.length, step = 1 / state.takes.length;
-      setProgress(base, `Take ${i + 1}/${state.takes.length}: decoding audio…`);
-      const pcm = await toPCM(state.takes[i].blob);
+    const n = state.takes.length;
+    for (let i = 0; i < n; i++) {
+      const base = i / n, step = 1 / n;
+      setProgress(base, `Take ${i + 1}/${n}: decoding audio…`);
+      const bytes = await state.takes[i].blob.arrayBuffer();
+      const hash = await sha(bytes);
+      const pcm = await toPCM(bytes).catch(() => { throw new Error(`Take ${i + 1} (${state.takes[i].name}) is not an audio file this browser can read. Try m4a, mp3 or wav.`); });
+      const wav = toWav(pcm);
       const silences = findSilences(pcm);
-      const out = await transcribe(pcm, model, (t) => setProgress(base + step * 0.3, `Take ${i + 1}/${state.takes.length}: ${t}`));
-      results.push({ ...analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value }), text: out.text });
+      // same recording + same model → reuse the transcript (makes a re-run instant)
+      const txKey = `sc:tx:${model}:${hash}`;
+      let out = store.get(txKey, null);
+      if (!out) {
+        out = await transcribe(pcm, model, (t) => setProgress(base + step * 0.3, `Take ${i + 1}/${n}: ${t}`));
+        // the model sometimes hallucinates on a take (e.g. a line of random characters) — never keep that
+        const heard = out.words.filter(w => /[a-z0-9]/i.test(w.text));
+        if (heard.length < Math.max(5, script.words.length * 0.2)) { unheard.push(i + 1); continue; }
+        store.set(txKey, { text: out.text, words: out.words });
+      }
+      state.wavs.push(URL.createObjectURL(wav));
+      lastWav = wav; lastHash = hash;
+      results.push({ ...analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value }), text: out.text, label: i + 1 });
       setProgress(base + step, `Take ${i + 1} done`);
     }
-    setProgress(1, 'Done ✓');
-    render(script, results);
+
+    if (!results.length) throw new Error('No speech could be heard in your takes. Try recording closer to the microphone.');
+    let pron = null, pronErr = '';
+    if ($('#pronOn').checked) {
+      const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim();
+      const pKey = `sc:pron:${scriptKey}:${lastHash}`;
+      pron = store.get(pKey, null);
+      if (!pron && !(key && region)) pronErr = 'Add your Azure Speech key and region in Settings to check pronunciation.';
+      else if (!pron) {
+        try {
+          pron = await assess(script, lastWav, { key, region }, (t) => setProgress(0.97, t));
+          store.set(pKey, pron);
+        } catch (err) { pronErr = 'Pronunciation check failed: ' + err.message; }
+      }
+    }
+    setProgress(1, unheard.length ? `Done ✓ — couldn't hear take ${unheard.join(', ')}, so it was left out. Try analyzing it again or record it once more.` : 'Done ✓');
+    render(script, results, pron, pronErr, scriptKey);
   } catch (err) {
     setProgress(0, 'Something went wrong: ' + err.message);
   } finally { refreshAnalyze(); }
 };
 
-// ---------- step 4 + 5
+// ---------- replay a moment of a take
+let stopTimer = null;
+async function playSeg(url, a, b) {
+  const p = $('#player');
+  if (p.dataset.src !== url) {
+    p.src = url; p.dataset.src = url;
+    await new Promise(r => p.readyState >= 1 ? r() : p.addEventListener('loadedmetadata', r, { once: true }));
+  }
+  clearTimeout(stopTimer);
+  p.currentTime = Math.max(0, a);
+  await p.play().catch(() => {});
+  stopTimer = setTimeout(() => p.pause(), Math.max(0.4, b - a) * 1000);
+}
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-a]');
+  if (el && state.wavs[+el.dataset.take]) playSeg(state.wavs[+el.dataset.take], +el.dataset.a, +el.dataset.b);
+});
+const playAttr = (take, a, b) => `data-take="${take}" data-a="${a.toFixed(2)}" data-b="${b.toFixed(2)}"`;
+
+// ---------- render
 function sentenceHTML(script, si, hits, nTakes) {
   const s = script.sentences[si];
   return s.words.map(wi => {
@@ -152,29 +242,57 @@ function sentenceHTML(script, si, hits, nTakes) {
     return h && (h >= 2 || nTakes < 3) ? `<mark class="bad" title="missed or misheard in ${h} take(s)">${esc(w.raw)}</mark>` : esc(w.raw);
   }).join(' ');
 }
+const snippet = (text, n = 7) => { const w = text.split(/\s+/); return esc(w.slice(0, n).join(' ')) + (w.length > n ? ' …' : ''); };
 
-function render(script, takes) {
+function render(script, takes, pron, pronErr, scriptKey) {
   const ranked = rankSentences(script, takes);
   const weak = pickWeak(ranked);
   const weakSet = new Set(weak.map(w => w.si));
-  // summary
-  const avgDur = takes.reduce((a, t) => a + t.total, 0) / takes.length;
-  const avgErr = takes.reduce((a, t) => a + t.per.reduce((x, p) => x + p.sub + p.del, 0), 0) / takes.length;
-  $('#summary').innerHTML = `
-    <div class="stat"><b>${takes.length}</b>takes</div>
-    <div class="stat"><b>${Math.floor(avgDur / 60)}:${String(Math.round(avgDur % 60)).padStart(2, '0')}</b>avg length</div>
-    <div class="stat"><b>${Math.round(takes.reduce((a, t) => a + t.wpm, 0) / takes.length)}</b>words / min</div>
-    <div class="stat"><b>${avgErr.toFixed(1)}</b>missed/misheard words per take</div>
-    <div class="stat"><b>${weak.length}</b>weak sentences</div>`;
+  const [lo, hi] = target();
+  const r = readyScore(takes, weak, [lo, hi], pron);
+  const last = takes.length - 1;
+
+  // Ready score
+  const label = { time: 'Time', pauses: 'Pauses', stuck: 'Stuck sentences', pron: 'Pronunciation' };
+  const tone = r.score >= 85 ? 'good' : r.score >= 65 ? 'warn' : 'bad';
+  $('#ready').innerHTML = `<div class="score ${tone}" style="--p:${r.score}"><b>${r.score}</b><span>Ready</span></div>
+    <div class="why"><p class="lead">${r.score >= 85 ? 'You are almost ready.' : r.score >= 65 ? 'Getting there.' : 'Keep practicing.'}</p>
+    <p>${r.why.length ? r.why.map(esc).join(' · ') : 'Nothing to fix. 🎉'}</p>
+    <div class="parts">${r.parts.map(p => `<span>${label[p.key]} <b>${Math.round(p.got)}</b>/${p.max}</span>`).join('')}</div></div>`;
+
+  // time and speed
+  $('#timeSpeed').innerHTML = takes.map((t, i) => {
+    const ok = t.total >= lo && t.total <= hi;
+    const mark = ok ? '<span class="good">✅</span>' : t.total > hi ? '<span class="bad">⚠ long</span>' : '<span class="warn">⚠ short</span>';
+    return `<div class="stat"><span class="muted">Take ${t.label}</span><b>${fmt(t.total)}</b>${mark} · ${Math.round(t.wpm)} wpm</div>`;
+  }).join('') + `<div class="stat target"><span class="muted">Target</span><b>${fmt(lo)}–${fmt(hi)}</b>average ${fmt(r.avgDur)}</div>`;
+
+  // stops over 2 s, grouped by sentence
+  const stops = new Map();
+  takes.forEach((t, ti) => t.pauseMarks.filter(p => p.dur >= LONG_PAUSE && p.si !== undefined).forEach(p => {
+    const at = t.hw[p.before].start;
+    if (!stops.has(p.si)) stops.set(p.si, []);
+    stops.get(p.si).push({ ti, dur: p.dur, kind: p.kind, a: at - p.dur - 1.2, b: at + 1.5 });
+  }));
+  $('#stops').innerHTML = stops.size ? [...stops.entries()].sort((a, b) => a[0] - b[0]).map(([si, list]) => `
+    <div class="stop"><span class="sent">${list[0].kind === 'start' ? 'before' : 'inside'} “${snippet(script.sentences[si].text)}”</span>
+    ${list.map(s => `<button class="chip" ${playAttr(s.ti, s.a, s.b)} title="listen">▶ Take ${takes[s.ti].label} · ${s.dur.toFixed(1)} s</button>`).join('')}</div>`).join('')
+    : '<p class="muted">No stops over 2 seconds. 👏</p>';
+
+  // weak sentences
   $('#weak').innerHTML = weak.length ? weak.map(w => `
     <div class="weak-item"><div class="sent">${sentenceHTML(script, w.si, w.wordHits, w.nTakes)}</div>
-    <div class="why">trouble in ${w.troubled}/${w.nTakes} takes · ${w.reasons.join(' · ') || 'slow'}</div></div>`).join('')
-    : '<p>No sentence keeps tripping you up. Nice! 🎉</p>';
-  const unpracticed = ranked.filter(r => r.skippedTakes > 0);
-  if (unpracticed.length) $('#weak').innerHTML += `<p class="muted" style="margin-top:12px">Not practiced in some takes (not counted as weak): ${unpracticed.map(r => `#${r.si + 1} (${r.skippedTakes}/${takes.length})`).join(', ')}</p>`;
+    <div class="why">stuck in ${w.troubled}/${w.nTakes} takes · ${w.reasons.join(' · ') || 'slow'}</div></div>`).join('')
+    : '<p class="muted">No sentence keeps tripping you up. Nice! 🎉</p>';
+  const unpracticed = ranked.filter(x => x.skippedTakes > 0);
+  if (unpracticed.length && unpracticed.length <= 6) $('#weak').innerHTML += `<p class="muted" style="margin-top:12px">Not practiced in some takes (not counted as weak): ${unpracticed.map(x => `#${x.si + 1} (${x.skippedTakes}/${takes.length})`).join(', ')}</p>`;
+
+  // pronunciation on the latest take — click a word to hear it
+  renderPron(script, takes[last], last, pron, pronErr, takes[last].label);
+
   // heatmap
   const col = (v) => v < 0.4 ? '#d3f9d8' : v < 1 ? '#fff3bf' : '#ffd8c2';
-  $('#heat').innerHTML = `<table class="heat"><tr><th>#</th><th>Sentence</th>${takes.map((_, i) => `<th>T${i + 1}</th>`).join('')}</tr>
+  $('#heat').innerHTML = `<table class="heat"><tr><th>#</th><th>Sentence</th>${takes.map(t => `<th>T${t.label}</th>`).join('')}</tr>
     ${script.sentences.map((s, si) => `<tr><td>${si + 1}</td><td>${esc(s.text)}</td>${takes.map(t => t.per[si].attempted ? `<td class="c" style="background:${col(t.per[si].score)}" title="score ${t.per[si].score.toFixed(2)}">${t.per[si].score.toFixed(1)}</td>` : '<td class="c muted">—</td>').join('')}</tr>`).join('')}</table>`;
   // diffs
   $('#diffs').innerHTML = takes.map((t, ti) => {
@@ -188,11 +306,11 @@ function render(script, takes) {
       else if (o.t === 'del') html += `<span class="w-del">${esc(script.words[o.s].raw)}</span> `;
       else html += `<span class="w-ins">${esc(t.hw[o.h].text)}</span> `;
     }
-    return `<h4>Take ${ti + 1} · ${t.total.toFixed(0)} s</h4><div class="diff">${html}</div>`;
+    return `<h4>Take ${t.label} · ${fmt(t.total)}</h4><div class="diff">${html}</div>`;
   }).join('') + '<p class="muted">orange = heard differently · <s>red</s> = skipped · <i>grey</i> = extra words · ⏸ = long pause</p>';
   $('#results').hidden = false;
 
-  // cue cards: one per part
+  // cue cards (shown when "Make my cue card" is pressed)
   const labels = ['Intro', 'Point 1', 'Point 2', 'Point 3', 'Point 4', 'Point 5', 'Point 6'];
   const nParts = script.parts.length;
   $('#cards').innerHTML = script.parts.map((_, pi) => {
@@ -204,9 +322,77 @@ function render(script, takes) {
       return `<li><span class="first">${esc(first)}</span> …</li>`;
     }).join('')}</ol></div>`;
   }).join('');
+  $('#cards').hidden = true; $('#print').hidden = true;
   $('#cardsSec').hidden = false;
+
+  // repeat: save this run, draw the trend
+  const hk = `sc:hist:${scriptKey}`;
+  const hist = store.get(hk, []);
+  hist.push({ t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
+  store.set(hk, hist.slice(-30));
+  renderHistory(hk);
+
   $('#results').scrollIntoView({ behavior: 'smooth' });
 }
 
+function renderPron(script, take, ti, pron, pronErr, label) {
+  const words = script.words;
+  let html = '';
+  if (pron) {
+    $('#pronScores').textContent = `· ${Math.round(pron.pron)}/100 — accuracy ${Math.round(pron.accuracy)} · fluency ${Math.round(pron.fluency)} · completeness ${Math.round(pron.completeness)}${pron.prosody !== undefined ? ` · intonation ${Math.round(pron.prosody)}` : ''}`;
+    $('#pronHint').textContent = `Take ${label}. Red words were not clear. Click a word to hear your voice again.`;
+    const map = pron.words;
+    html = words.map((w, wi) => {
+      const p = map[wi];
+      if (!p) return `<span class="w skip" title="skipped">${esc(w.raw)}</span>`;
+      const cls = p.acc >= 80 ? 'good' : p.acc >= 60 ? 'meh' : 'bad';
+      return `<span class="w ${cls}" ${playAttr(ti, p.start - 0.15, p.end + 0.15)} title="${Math.round(p.acc)}/100${p.err && p.err !== 'None' ? ' · ' + p.err : ''}">${esc(w.raw)}</span>`;
+    });
+  } else {
+    // without Microsoft: words the speech model heard differently are the unclear ones
+    $('#pronScores').textContent = '';
+    $('#pronHint').innerHTML = (pronErr ? `<span class="bad">${esc(pronErr)}</span> ` : '') +
+      `Take ${label}. Red words are the ones the AI heard differently. Click one to hear your voice again.${pronErr ? '' : ' Turn on “Check pronunciation” for word-by-word scores.'}`;
+    const bySrc = {};
+    for (const o of take.ops) if (o.s !== undefined) bySrc[o.s] = o;
+    html = words.map((w, wi) => {
+      const o = bySrc[wi];
+      if (!o || o.t === 'del') return `<span class="w skip" title="skipped">${esc(w.raw)}</span>`;
+      const h = take.hw[o.h];
+      const cls = o.t === 'sub' && !w.name ? 'bad' : '';
+      return `<span class="w ${cls}" ${playAttr(ti, h.start - 0.15, h.end + 0.15)}${cls ? ` title="heard: ${esc(h.text)}"` : ''}>${esc(w.raw)}</span>`;
+    });
+  }
+  // keep the script's sentence breaks readable
+  const out = []; let prev = -1;
+  words.forEach((w, wi) => { if (w.si !== prev && prev !== -1 && script.sentences[w.si].part !== script.sentences[prev].part) out.push('<br><br>'); out.push(html[wi]); prev = w.si; });
+  $('#pron').innerHTML = out.join(' ');
+}
+
+function renderHistory(hk) {
+  const hist = store.get(hk, []);
+  $('#repeatSec').hidden = !hist.length;
+  if (!hist.length) return;
+  const recent = hist.slice(-6).map(h => h.score);
+  $('#trend').innerHTML = `Your Ready score: <b>${recent.join(' → ')}</b>` +
+    (hist.length > 1 ? ` <span class="muted">(${hist[hist.length - 1].score - hist[0].score >= 0 ? '+' : ''}${hist[hist.length - 1].score - hist[0].score} since your first try)</span>` : '');
+  const W = 640, H = 200, P = 34;
+  const x = (i) => hist.length === 1 ? W / 2 : P + i * (W - 2 * P) / (hist.length - 1);
+  const y = (v) => H - P + 10 - v / 100 * (H - 2 * P);
+  const pts = hist.map((h, i) => `${x(i).toFixed(1)},${y(h.score).toFixed(1)}`).join(' ');
+  $('#graph').innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Ready score over practice runs">
+    ${[0, 50, 100].map(v => `<line x1="${P}" x2="${W - P}" y1="${y(v)}" y2="${y(v)}" class="grid"/><text x="${P - 8}" y="${y(v) + 4}" class="axis" text-anchor="end">${v}</text>`).join('')}
+    <defs><linearGradient id="stroke" x1="0" x2="1"><stop offset="0" stop-color="#3b5bfd"/><stop offset="1" stop-color="#7c4dff"/></linearGradient>
+      <linearGradient id="fade" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#7c4dff" stop-opacity=".22"/><stop offset="1" stop-color="#7c4dff" stop-opacity="0"/></linearGradient></defs>
+    ${hist.length > 1 ? `<polygon points="${x(0)},${y(0)} ${pts} ${x(hist.length - 1)},${y(0)}" class="area"/>` : ''}
+    <polyline points="${pts}" class="line"/>
+    ${hist.map((h, i) => `<circle cx="${x(i)}" cy="${y(h.score)}" r="5" class="dot"><title>Run ${i + 1}: ${h.score} · ${h.stuck} stuck · ${new Date(h.t).toLocaleString()}</title></circle>
+      <text x="${x(i)}" y="${y(h.score) - 11}" text-anchor="middle" class="val">${h.score}</text>
+      <text x="${x(i)}" y="${H - 6}" text-anchor="middle" class="axis">#${i + 1}</text>`).join('')}
+  </svg>`;
+  $('#clearHist').onclick = () => { if (confirm('Clear the score history for this script?')) { store.del(hk); renderHistory(hk); } };
+}
+
+$('#makeCards').onclick = () => { $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' }); };
 $('#print').onclick = () => window.print();
 updateScriptInfo();

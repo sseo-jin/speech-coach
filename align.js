@@ -118,10 +118,10 @@ export function analyzeTake(script, heard, opts = {}) {
       const sp = sentOf(j - 1, -1), sn = sentOf(j, 1);
       if (sn === undefined) continue;
       if (sp === sn) {
-        if (dur >= pauseMin) { per[sn].pauses++; per[sn].maxPause = Math.max(per[sn].maxPause, dur); pauseMarks.push({ before: j, dur, kind: 'in' }); }
+        if (dur >= pauseMin) { per[sn].pauses++; per[sn].maxPause = Math.max(per[sn].maxPause, dur); pauseMarks.push({ before: j, dur, kind: 'in', si: sn }); }
       } else if (dur >= betweenMin) {
         per[sn].startPauses = (per[sn].startPauses || 0) + 1; per[sn].maxPause = Math.max(per[sn].maxPause, dur);
-        pauseMarks.push({ before: j, dur, kind: 'start' });
+        pauseMarks.push({ before: j, dur, kind: 'start', si: sn });
       }
     }
   }
@@ -133,7 +133,7 @@ export function analyzeTake(script, heard, opts = {}) {
       if (!(opts.silences && opts.silences.length)) {
         for (let k = 1; k < hs.length; k++) {
           const gap = hw[hs[k]].start - hw[hs[k - 1]].end;
-          if (gap >= pauseMin) { st.pauses++; st.maxPause = Math.max(st.maxPause, gap); pauseMarks.push({ before: hs[k], dur: gap, kind: 'in' }); }
+          if (gap >= pauseMin) { st.pauses++; st.maxPause = Math.max(st.maxPause, gap); pauseMarks.push({ before: hs[k], dur: gap, kind: 'in', si }); }
         }
       }
       st.wpm = (st.ok + st.sub) / st.dur * 60;
