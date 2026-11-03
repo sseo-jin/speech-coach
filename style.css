@@ -143,6 +143,7 @@ mark.bad{background:#ffd3d0;color:#8f1d20;border-radius:4px;padding:0 3px;font-w
 .card li{margin:3px 0;line-height:27px}
 .card .first{font-weight:700}
 .card .full{font-size:17px;font-weight:600;background:var(--weak-soft);border-radius:6px;padding:2px 6px}
+.card .often{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
 
 /* ---------- step 5 repeat */
 .trend{font-size:18px;margin:6px 0 10px;color:var(--ink2)}
@@ -233,9 +234,9 @@ body.locked main .step:not(.gate),body.locked .steps-nav{display:none}
 
 @media print{
   body{background:#fff}
-  .top,.step:not(#cardsSec),.pricing,footer,#cardsSec h2,#cardsSec .hint,#cardsSec .row{display:none!important}
+  .top,.step:not(#repeatSec),.pricing,footer,#repeatSec>:not(#cardsSec),#cardsSec>:not(#cards){display:none!important}
   main{margin:0;padding:0}
-  #cardsSec{border:none;padding:0;margin:0;box-shadow:none}
+  #repeatSec{border:none;padding:0;margin:0;box-shadow:none}
   .cards{display:block}
   .card{width:148mm;height:98mm;overflow:hidden;page-break-inside:avoid;break-inside:avoid;margin:0 0 6mm;font-size:13pt;box-shadow:none;background-image:none;border:1px dashed #999}
 }

@@ -33,7 +33,7 @@ document.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
   e.preventDefault();
   if (act === 'login') { $('#authErr').textContent = ''; $('#auth').showModal(); }
-  if (act === 'logout') { store.del('sc:lastResult'); $('#results').hidden = true; logOut(); }
+  if (act === 'logout') { store.del('sc:lastResult'); $('#results').hidden = true; $('#repeatSec').hidden = true; logOut(); }
   if (act === 'close') $('#auth').close();
 });
 async function auth(kind) {
@@ -361,20 +361,10 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
 
   $('#results').hidden = false;
 
-  // cue cards (shown when "Make my cue card" is pressed)
-  const labels = ['Intro', 'Point 1', 'Point 2', 'Point 3', 'Point 4', 'Point 5', 'Point 6'];
-  const nParts = script.parts.length;
-  $('#cards').innerHTML = script.parts.map((_, pi) => {
-    const sents = script.sentences.map((s, si) => ({ s, si })).filter(x => x.s.part === pi);
-    const title = pi === nParts - 1 && nParts > 1 ? 'Conclusion' : (labels[pi] || `Part ${pi + 1}`);
-    return `<div class="card"><h3>${pi + 1}. ${title}</h3><ol>${sents.map(({ s, si }) => {
-      if (weakSet.has(si)) return `<li class="full">${sentenceHTML(script, si, ranked[si].wordHits, ranked[si].nTakes)}</li>`;
-      const first = s.text.split(/\s+/).slice(0, 3).join(' ');
-      return `<li><span class="first">${esc(first)}</span> …</li>`;
-    }).join('')}</ol></div>`;
-  }).join('');
+  // cue card: built when "Make my cue card" is pressed, so it also uses the saved history
+  cardRun = { script, ranked, weakSet };
   $('#cards').hidden = true; $('#print').hidden = true;
-  $('#cardsSec').hidden = false;
+  $('#repeatSec').hidden = false;
 
   // repeat: save this run, draw the trend
   histScript = script;
@@ -426,7 +416,7 @@ function renderPron(script, take, ti, pron, pronErr, label) {
 const histKey = (k) => `sc:hist:${k}`;
 const localHist = (k) => store.get(histKey(k), null) ?? (demo && k === demo.scriptKey ? [...(demo.history || [])] : []);
 const loadHist = (k) => cloud.user ? listScores(k) : localHist(k);
-let shownKey = null, histScript = null;
+let shownKey = null, histScript = null, cardRun = null, oftenSet = new Set();
 async function saveAndShowHistory(k, entry) {
   shownKey = k;
   try {
@@ -436,8 +426,8 @@ async function saveAndShowHistory(k, entry) {
 }
 function renderHistory(hist) {
   state.hist = hist;
-  $('#repeatSec').hidden = !hist.length;
-  if (!hist.length) return;
+  oftenSet = new Set();
+  if (!hist.length) { $('#graph').innerHTML = ''; $('#missed').innerHTML = ''; return; }
   $('#trend').textContent = '';
   const W = 640, H = 200, P = 34;
   const x = (i) => hist.length === 1 ? W / 2 : P + i * (W - 2 * P) / (hist.length - 1);
@@ -460,7 +450,9 @@ function renderMissed(hist) {
   const runs = hist.filter(h => Array.isArray(h.missed));
   const count = new Map();
   runs.forEach(h => h.missed.forEach(si => count.set(si, (count.get(si) || 0) + 1)));
-  const top = [...count.entries()].filter(([si, n]) => n >= 2 && histScript?.sentences[si]).sort((a, b) => b[1] - a[1] || a[0] - b[0]).slice(0, 3);
+  const often = [...count.entries()].filter(([si, n]) => n >= 2 && histScript?.sentences[si]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+  if (runs.length >= 2) oftenSet = new Set(often.map(([si]) => si));
+  const top = often.slice(0, 3);
   $('#missed').innerHTML = runs.length < 2 ? '' : top.length
     ? `<h3 class="sec">🔁 Sentences you miss most often</h3>` + top.map(([si, n]) => `
       <div class="weak-item"><div class="sent">“${snippet(histScript.sentences[si].text, 12)}”</div>
@@ -486,7 +478,26 @@ $('#resetAll').onclick = async () => {
   if (shownKey) saveAndShowHistory(shownKey, null);
 };
 
-$('#makeCards').onclick = () => { $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' }); };
+// stuck this time, or missed in 2+ saved runs → written out in full; the rest show the first words
+function buildCards() {
+  const { script, ranked, weakSet } = cardRun;
+  const labels = ['Intro', 'Point 1', 'Point 2', 'Point 3', 'Point 4', 'Point 5', 'Point 6'];
+  const nParts = script.parts.length;
+  return script.parts.map((_, pi) => {
+    const sents = script.sentences.map((s, si) => ({ s, si })).filter(x => x.s.part === pi);
+    const title = pi === nParts - 1 && nParts > 1 ? 'Conclusion' : (labels[pi] || `Part ${pi + 1}`);
+    return `<div class="card"><h3>${pi + 1}. ${title}</h3><ol>${sents.map(({ s, si }) => {
+      if (weakSet.has(si) || oftenSet.has(si)) return `<li class="full">${sentenceHTML(script, si, ranked[si].wordHits, ranked[si].nTakes)}${!weakSet.has(si) ? '<span class="often">often</span>' : ''}</li>`;
+      const first = s.text.split(/\s+/).slice(0, 3).join(' ');
+      return `<li><span class="first">${esc(first)}</span> …</li>`;
+    }).join('')}</ol></div>`;
+  }).join('');
+}
+$('#makeCards').onclick = () => {
+  if (!cardRun) return;
+  $('#cards').innerHTML = buildCards();
+  $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' });
+};
 $('#print').onclick = () => window.print();
 updateScriptInfo();
 

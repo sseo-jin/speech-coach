@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -15,8 +15,7 @@
     <li><a href="#step1"><i>1</i>Paste</a></li>
     <li><a href="#step2"><i>2</i>Record</a></li>
     <li><a href="#step3"><i>3</i>Check</a></li>
-    <li><a href="#cardsSec"><i>4</i>Practice</a></li>
-    <li><a href="#repeatSec"><i>5</i>Repeat</a></li>
+    <li><a href="#repeatSec"><i>4</i>Repeat</a></li>
   </ul>
   <p class="privacy">🔒 Speech-to-text runs in this browser. Your recordings stay on your device unless you turn on the pronunciation check.</p>
 </header>
@@ -84,21 +83,19 @@
     </div>
   </section>
 
-  <!-- 4 PRACTICE -->
-  <section class="step" id="cardsSec" hidden>
-    <h2><span class="n">4</span> Practice with a cue card</h2>
-    <p class="hint">Only your weak parts are written out in full, in big letters. Strong sentences show just the first words.</p>
-    <div class="row"><button id="makeCards" class="primary big">Make my cue card</button><button id="print" hidden>🖨 Print</button></div>
-    <div id="cards" class="cards" hidden></div>
-  </section>
-
-  <!-- 5 REPEAT -->
+  <!-- 4 REPEAT: score over time → sentences you often miss → cue card with them -->
   <section class="step" id="repeatSec" hidden>
-    <h2><span class="n">5</span> Repeat</h2>
-    <p class="hint">Every time you analyze this script, your Ready score and the sentences you got stuck on are saved to your account.</p>
+    <h2><span class="n">4</span> Repeat</h2>
+    <p class="hint">Repeat this process. Every time you analyze this script, your Ready score and the sentences you got stuck on are saved to your account.</p>
     <div id="trend" class="trend"></div>
     <div id="graph"></div>
     <div id="missed"></div>
+    <div id="cardsSec">
+      <h3 class="sec">🗂 Your cue card</h3>
+      <p class="hint">Sentences you got stuck on this time, or keep missing, are written out in full, in big letters. The rest show just the first words.</p>
+      <div class="row"><button id="makeCards" class="primary big">Make my cue card</button><button id="print" hidden>🖨 Print</button></div>
+      <div id="cards" class="cards" hidden></div>
+    </div>
     <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button><button id="resetAll" class="ghost danger">Reset all my scores</button><button id="saveDemo" class="ghost" hidden>Save as demo.json</button></div>
   </section>
 
