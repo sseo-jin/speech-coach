@@ -1,7 +1,7 @@
 import { parseScript, analyzeTake, rankSentences, pickWeak } from './align.js';
 import { readyScore, fmt, LONG_PAUSE } from './score.js';
 import { assess, toWav } from './pron.js';
-import { cloud, initCloud, signUp, logIn, logOut, listScores, addScore, clearScores } from './account.js';
+import { cloud, initCloud, signUp, logIn, logOut, listScores, addScore, clearScores, azToken } from './account.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -260,10 +260,12 @@ $('#analyze').onclick = async () => {
       const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim();
       const pKey = `sc:pron:${scriptKey}:${lastHash}`;
       pron = store.get(pKey, null) || demo?.pron?.[`${scriptKey}:${lastHash}`] || null;
-      if (!pron && !(key && region)) pronErr = 'Pronunciation check is not set up yet (no Azure key in config.local.js).';
+      if (!pron && !(key && region) && !cloud.user) pronErr = 'Log in to use the pronunciation check.';
       else if (!pron) {
         try {
-          pron = await assess(script, lastWav, { key, region }, (t) => setProgress(0.97, t));
+          // no local key → ask our server for a 10-minute token (the key never comes to this browser)
+          const auth = key && region ? { key, region } : await azToken();
+          pron = await assess(script, lastWav, auth, (t) => setProgress(0.97, t));
           store.set(pKey, pron);
         } catch (err) { pronErr = 'Pronunciation check failed: ' + err.message; }
       }

@@ -9,7 +9,7 @@ Paste a speech script, add several practice recordings, and it finds the sentenc
   - Check: Ready score (time 25 + pauses 25 + stuck sentences 30 [+ pronunciation 20]) with the reasons, time/speed per take, stops over 2 s (click to listen), stuck sentences, pronunciation on the latest take (click a word to hear it).
   - Practice: cue cards on demand. Repeat: Ready score history per script (localStorage) as a line chart.
   - Transcripts and pronunciation results are cached by audio hash, so re-analyzing the same files is instant (handy for a live demo).
-- `score.js` — Ready score. `pron.js` — Microsoft Azure AI Speech Pronunciation Assessment (off by default; the latest take is sent to Azure only when turned on; the user's key and region are stored in this browser only).
+- `score.js` — Ready score. `pron.js` — Microsoft Azure AI Speech Pronunciation Assessment (off by default; the latest take is sent to Azure only when turned on; the key stays in Supabase secrets; the browser gets a 10-minute token from the `az-token` edge function in `supabase/functions/`, or uses `config.local.js` when testing locally).
 
 Run locally:
 

@@ -1,6 +1,6 @@
 // Pronunciation check with Microsoft Azure AI Speech "Pronunciation Assessment".
 // Off by default: only when the user turns it on does the latest take leave the browser.
-// The key is the user's own and is stored only in this browser (localStorage).
+// Uses a short-lived token from the az-token edge function, or a local key (config.local.js) when testing.
 import { align, norm } from './align.js';
 
 const SDK_URL = 'https://cdn.jsdelivr.net/npm/microsoft-cognitiveservices-speech-sdk@1.40.0/distrib/browser/microsoft.cognitiveservices.speech.sdk.bundle-min.js';
@@ -29,10 +29,10 @@ export function toWav(pcm, rate = 16000) {
 }
 
 // Returns { pron, accuracy, fluency, completeness, prosody, words: {scriptIdx: {acc, start, end, err}} }
-export async function assess(script, wavBlob, { key, region }, onStatus = () => {}) {
+export async function assess(script, wavBlob, { key, region, token }, onStatus = () => {}) {
   const SDK = await loadSDK();
   onStatus('Checking pronunciation with Microsoft…');
-  const cfg = SDK.SpeechConfig.fromSubscription(key, region);
+  const cfg = token ? SDK.SpeechConfig.fromAuthorizationToken(token, region) : SDK.SpeechConfig.fromSubscription(key, region);
   cfg.speechRecognitionLanguage = 'en-US';
   const audio = SDK.AudioConfig.fromWavFileInput(new File([wavBlob], 'take.wav', { type: 'audio/wav' }));
   const reference = script.sentences.map(s => s.text).join(' ');

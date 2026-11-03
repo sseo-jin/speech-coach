@@ -46,3 +46,10 @@ export async function clearScores(scriptKey) {
   const { error } = await q;
   if (error) throw error;
 }
+
+// short-lived Azure Speech token from the az-token edge function (the key itself stays in Supabase)
+export async function azToken() {
+  const { data, error } = await sb.functions.invoke('az-token');
+  if (error) throw new Error(data?.error || error.message);
+  return data; // { token, region }
+}
