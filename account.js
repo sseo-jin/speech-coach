@@ -19,7 +19,8 @@ export async function initCloud(onChange) {
 }
 
 export async function signUp(email, password) {
-  const { data, error } = await sb.auth.signUp({ email, password });
+  // the confirmation email links back to this page (local or deployed), not Supabase's default site
+  const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
   if (error) throw error;
   return !!data.session; // false → the project asks for email confirmation first
 }
