@@ -12,6 +12,11 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch { /* blocked */ } },
 };
 
+// demo.json: a fixed sample result for live demos on someone else's computer.
+// If an uploaded take matches a recording in it, its saved transcript and pronunciation are reused,
+// so the demo needs no model download and no Azure key.
+const demo = await fetch('demo.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+
 async function sha(data) {
   const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
   const h = await crypto.subtle.digest('SHA-256', buf);
@@ -188,6 +193,7 @@ $('#analyze').onclick = async () => {
   const results = [];
   state.wavs.forEach(u => URL.revokeObjectURL(u)); state.wavs = [];
   let lastWav = null, lastHash = '';
+  state.last = { script: scriptEl.value, target: target(), scriptKey, tx: {}, pron: {} }; // for scExportDemo()
   const unheard = [];
   try {
     const n = state.takes.length;
@@ -201,7 +207,7 @@ $('#analyze').onclick = async () => {
       const silences = findSilences(pcm);
       // same recording + same model → reuse the transcript (makes a re-run instant)
       const txKey = `sc:tx:${model}:${hash}`;
-      let out = store.get(txKey, null);
+      let out = store.get(txKey, null) || demo?.tx?.[hash] || null;
       if (!out) {
         out = await transcribe(pcm, model, (t) => setProgress(base + step * 0.3, `Take ${i + 1}/${n}: ${t}`));
         // the model sometimes hallucinates on a take (e.g. a line of random characters) — never keep that
@@ -209,6 +215,7 @@ $('#analyze').onclick = async () => {
         if (heard.length < Math.max(5, script.words.length * 0.2)) { unheard.push(i + 1); continue; }
         store.set(txKey, { text: out.text, words: out.words });
       }
+      state.last.tx[hash] = { text: out.text, words: out.words };
       state.wavs.push(URL.createObjectURL(wav));
       lastWav = wav; lastHash = hash;
       results.push({ ...analyzeTake(script, out.words, { silences, pauseMin: +$('#pauseMin').value }), text: out.text, label: i + 1 });
@@ -220,7 +227,7 @@ $('#analyze').onclick = async () => {
     if ($('#pronOn').checked) {
       const key = $('#azKey').value.trim(), region = $('#azRegion').value.trim();
       const pKey = `sc:pron:${scriptKey}:${lastHash}`;
-      pron = store.get(pKey, null);
+      pron = store.get(pKey, null) || demo?.pron?.[`${scriptKey}:${lastHash}`] || null;
       if (!pron && !(key && region)) pronErr = 'Pronunciation check is not set up yet (no Azure key in config.local.js).';
       else if (!pron) {
         try {
@@ -230,6 +237,8 @@ $('#analyze').onclick = async () => {
       }
     }
     setProgress(1, unheard.length ? `Done ✓ — couldn't hear take ${unheard.join(', ')}, so it was left out. Try analyzing it again or record it once more.` : 'Done ✓');
+    if (pron) state.last.pron[`${scriptKey}:${lastHash}`] = pron;
+    state.last.results = results; state.last.pronResult = pron;
     render(script, results, pron, pronErr, scriptKey);
   } catch (err) {
     setProgress(0, 'Something went wrong: ' + err.message);
@@ -265,7 +274,7 @@ function sentenceHTML(script, si, hits, nTakes) {
 }
 const snippet = (text, n = 7) => { const w = text.split(/\s+/); return esc(w.slice(0, n).join(' ')) + (w.length > n ? ' …' : ''); };
 
-function render(script, takes, pron, pronErr, scriptKey) {
+function render(script, takes, pron, pronErr, scriptKey, { sample = false } = {}) {
   const ranked = rankSentences(script, takes);
   const weak = pickWeak(ranked);
   const weakSet = new Set(weak.map(w => w.si));
@@ -349,8 +358,8 @@ function render(script, takes, pron, pronErr, scriptKey) {
   // repeat: save this run, draw the trend
   const hk = `sc:hist:${scriptKey}`;
   const hist = store.get(hk, []);
-  hist.push({ t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
-  store.set(hk, hist.slice(-30));
+  if (!sample) hist.push({ t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
+  if (!sample) store.set(hk, hist.slice(-30));
   renderHistory(hk);
 
   $('#results').scrollIntoView({ behavior: 'smooth' });
@@ -417,3 +426,22 @@ function renderHistory(hk) {
 $('#makeCards').onclick = () => { $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' }); };
 $('#print').onclick = () => window.print();
 updateScriptInfo();
+
+// ---------- sample result (demo.json)
+if (demo?.sample) {
+  $('#sampleResult').hidden = false;
+  $('#sampleResult').onclick = () => {
+    scriptEl.value = demo.script; store.set('sc:script', demo.script);
+    setT('tFrom', demo.target[0]); setT('tTo', demo.target[1]);
+    updateScriptInfo(); refreshAnalyze();
+    state.wavs = [];
+    setProgress(1, 'This is a sample result. Upload your own takes and press Analyze to see yours.');
+    render(parseScript(demo.script), demo.sample.results, demo.sample.pron, '', demo.scriptKey, { sample: true });
+  };
+}
+
+// Run in the console after analyzing the demo takes, then save the text as demo.json
+window.scExportDemo = () => {
+  const l = state.last; if (!l?.results) return 'Analyze first.';
+  return JSON.stringify({ script: l.script, target: l.target, scriptKey: l.scriptKey, tx: l.tx, pron: l.pron, sample: { results: l.results, pron: l.pronResult } });
+};

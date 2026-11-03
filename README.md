@@ -22,3 +22,5 @@ then open http://localhost:5178
 Built 2026-10-27 as a demonstrative-speech topic idea for 영어발표 (SKKU).
 
 Cue cards print at 148×98 mm — the course rule is "no larger than 10 × 15 cm".
+
+Live demo on another computer: `demo.json` holds a fixed sample result (script, target, transcripts and pronunciation by audio hash). "See a sample result" shows it with no recording, and uploading the same takes reuses it, so no model download or Azure key is needed. To remake it: analyze the demo takes locally (pronunciation on), run `copy(scExportDemo())` in the console and save the text as `demo.json`.
