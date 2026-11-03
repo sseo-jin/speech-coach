@@ -240,6 +240,7 @@ $('#analyze').onclick = async () => {
     if (pron) state.last.pron[`${scriptKey}:${lastHash}`] = pron;
     state.last.results = results; state.last.pronResult = pron;
     render(script, results, pron, pronErr, scriptKey);
+    store.set('sc:lastResult', { script: scriptEl.value, results, pron, pronErr, scriptKey });
   } catch (err) {
     setProgress(0, 'Something went wrong: ' + err.message);
   } finally { refreshAnalyze(); }
@@ -274,7 +275,7 @@ function sentenceHTML(script, si, hits, nTakes) {
 }
 const snippet = (text, n = 7) => { const w = text.split(/\s+/); return esc(w.slice(0, n).join(' ')) + (w.length > n ? ' …' : ''); };
 
-function render(script, takes, pron, pronErr, scriptKey, { sample = false } = {}) {
+function render(script, takes, pron, pronErr, scriptKey, { sample = false, scroll = true } = {}) {
   const ranked = rankSentences(script, takes);
   const weak = pickWeak(ranked);
   const weakSet = new Set(weak.map(w => w.si));
@@ -339,12 +340,12 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false } = {}
 
   // repeat: save this run, draw the trend
   const hk = `sc:hist:${scriptKey}`;
-  const hist = store.get(hk, []);
+  const hist = getHist(hk);
   if (!sample) hist.push({ t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
   if (!sample) store.set(hk, hist.slice(-30));
   renderHistory(hk);
 
-  $('#results').scrollIntoView({ behavior: 'smooth' });
+  if (scroll) $('#results').scrollIntoView({ behavior: 'smooth' });
 }
 
 function renderPron(script, take, ti, pron, pronErr, label) {
@@ -381,8 +382,10 @@ function renderPron(script, take, ti, pron, pronErr, label) {
   $('#pron').innerHTML = out.join(' ');
 }
 
+// history from this browser; on a fresh browser the demo script starts from the history saved in demo.json
+const getHist = (hk) => store.get(hk, null) ?? (demo && hk === `sc:hist:${demo.scriptKey}` ? [...(demo.history || [])] : []);
 function renderHistory(hk) {
-  const hist = store.get(hk, []);
+  const hist = getHist(hk);
   $('#repeatSec').hidden = !hist.length;
   if (!hist.length) return;
   const recent = hist.slice(-6).map(h => h.score);
@@ -402,7 +405,7 @@ function renderHistory(hk) {
       <text x="${x(i)}" y="${y(h.score) - 11}" text-anchor="middle" class="val">${h.score}</text>
       <text x="${x(i)}" y="${H - 6}" text-anchor="middle" class="axis">#${i + 1}</text>`).join('')}
   </svg>`;
-  $('#clearHist').onclick = () => { if (confirm('Clear the score history for this script?')) { store.del(hk); renderHistory(hk); } };
+  $('#clearHist').onclick = () => { if (confirm('Clear the score history for this script?')) { store.set(hk, []); renderHistory(hk); } };
 }
 
 $('#makeCards').onclick = () => { $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' }); };
@@ -425,5 +428,24 @@ if (demo?.sample) {
 // Run in the console after analyzing the demo takes, then save the text as demo.json
 window.scExportDemo = () => {
   const l = state.last; if (!l?.results) return 'Analyze first.';
-  return JSON.stringify({ script: l.script, target: l.target, scriptKey: l.scriptKey, tx: l.tx, pron: l.pron, sample: { results: l.results, pron: l.pronResult } });
+  return JSON.stringify({ script: l.script, target: l.target, scriptKey: l.scriptKey, tx: l.tx, pron: l.pron, sample: { results: l.results, pron: l.pronResult }, history: getHist(`sc:hist:${l.scriptKey}`) });
 };
+// on localhost only: save the latest analysis + this script's score history as demo.json
+if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+  $('#saveDemo').hidden = false;
+  $('#saveDemo').onclick = () => {
+    const json = window.scExportDemo();
+    if (!json.startsWith('{')) return alert('Analyze your demo takes first.');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = 'demo.json'; a.click();
+  };
+}
+
+// ---------- after a reload: show the last result again (scores are already kept in this browser)
+{
+  const l = store.get('sc:lastResult', null);
+  if (l && l.script === scriptEl.value) {
+    setProgress(1, 'Your last result. Add your takes again to replay your voice.');
+    render(parseScript(l.script), l.results, l.pron, l.pronErr, l.scriptKey, { sample: true, scroll: false });
+  }
+}
