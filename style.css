@@ -48,8 +48,11 @@ button.big,.btn.big{font-size:16px;padding:12px 22px;border-radius:14px}
 #recTime{font:600 18px ui-monospace,Menlo,monospace;color:var(--weak)}
 select,input{font:inherit;font-size:14px;padding:7px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink)}
 label.muted{display:inline-flex;align-items:center;gap:6px}
-input.time{width:64px;text-align:center;font:inherit;font-variant-numeric:tabular-nums;color:var(--ink);padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
-input.time:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.tpick{display:inline-flex;align-items:center;gap:2px;padding:4px 6px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.tpick:focus-within{border-color:var(--accent);outline:2px solid var(--accent-soft)}
+.tpick input{width:46px;border:0;background:none;font:inherit;font-variant-numeric:tabular-nums;color:var(--ink);text-align:right;padding:4px 2px;caret-color:transparent}
+.tpick input:focus{outline:none}
+.tpick i{font-style:normal;color:var(--ink)}
 .muted{color:var(--muted);font-size:14px}
 .toggle{display:inline-flex;gap:10px;align-items:center;cursor:pointer;font-weight:600;font-size:15px;padding:8px 14px 8px 8px;border-radius:999px;border:1px solid var(--line);background:#fff;user-select:none}
 .toggle input{appearance:none;width:38px;height:22px;border-radius:999px;background:#d9d6ce;position:relative;cursor:pointer;transition:background .2s;margin:0;padding:0;border:none}

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 <header class="top">
@@ -30,8 +30,8 @@
     <div id="expect" class="expect" hidden></div>
     <div class="row">
       <label class="muted">Target time
-        <input id="tFrom" class="time" value="1:30" inputmode="numeric" placeholder="1:30" aria-label="Target from (m:ss)"> to
-        <input id="tTo" class="time" value="2:00" inputmode="numeric" placeholder="2:00" aria-label="Target to (m:ss)">
+        <span class="tpick" id="tFrom" aria-label="Target from"><input type="number" class="tm" min="0" max="10" step="1" aria-label="minutes"><i>:</i><input type="number" class="ts" min="-15" max="60" step="15" aria-label="seconds"></span> to
+        <span class="tpick" id="tTo" aria-label="Target to"><input type="number" class="tm" min="0" max="10" step="1" aria-label="minutes"><i>:</i><input type="number" class="ts" min="-15" max="60" step="15" aria-label="seconds"></span>
       </label>
       <label class="muted">My speed <select id="wpm"><option>115</option><option selected>125</option><option>135</option><option>145</option></select> wpm</label>
       <button id="loadSample" class="ghost">Load sample script</button>

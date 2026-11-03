@@ -44,14 +44,30 @@ How about going outside for just ten minutes tomorrow morning?
 Thank you for listening.`;
 
 const state = { takes: [], wavs: [] }; // takes: {name, blob, url} · wavs: 16 kHz WAV urls for exact replay
-// "2:30" or "150" → seconds
+// Target time: minutes ±1, seconds ±15 with the arrows only (no typing, so no odd values)
+const MAX_SEC = 10 * 60;
 const toSec = (v) => { const [m, sec] = String(v).trim().split(':'); return sec === undefined ? +m : +m * 60 + +sec; };
-const target = () => {
-  let lo = toSec($('#tFrom').value), hi = toSec($('#tTo').value);
-  if (!(lo >= 0)) lo = 90; if (!(hi > 0)) hi = 120;
-  return lo <= hi ? [lo, hi] : [hi, lo];
-};
-for (const id of ['#tFrom', '#tTo']) $(id).value = store.get('sc:' + id.slice(1), $(id).value);
+const getT = (id) => +$(`#${id} .tm`).value * 60 + +$(`#${id} .ts`).value;
+function setT(id, sec) {
+  sec = Math.max(0, Math.min(MAX_SEC, Math.round(sec / 15) * 15));
+  $(`#${id} .tm`).value = Math.floor(sec / 60);
+  $(`#${id} .ts`).value = String(sec % 60).padStart(2, '0');
+  store.set('sc:' + id, `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`);
+}
+const target = () => [getT('tFrom'), getT('tTo')];
+setT('tFrom', toSec(store.get('sc:tFrom', '1:30')) || 90);
+setT('tTo', toSec(store.get('sc:tTo', '2:00')) || 120);
+for (const id of ['tFrom', 'tTo']) {
+  const box = $('#' + id);
+  box.addEventListener('keydown', (e) => { if (!['ArrowUp', 'ArrowDown', 'Tab'].includes(e.key)) e.preventDefault(); });
+  box.addEventListener('paste', (e) => e.preventDefault());
+  box.addEventListener('input', () => {
+    setT(id, getT(id)); // 0:45 +15 → 1:00, 1:00 −15 → 0:45
+    const [lo, hi] = [getT('tFrom'), getT('tTo')];
+    if (lo > hi) id === 'tFrom' ? setT('tTo', lo) : setT('tFrom', hi); // keep from ≤ to
+    updateScriptInfo();
+  });
+}
 
 // ---------- 1 PASTE
 const scriptEl = $('#script');
@@ -68,7 +84,6 @@ function updateScriptInfo() {
   refreshAnalyze();
 }
 scriptEl.addEventListener('input', updateScriptInfo);
-for (const id of ['#tFrom', '#tTo']) $(id).oninput = () => { store.set('sc:' + id.slice(1), $(id).value.trim()); updateScriptInfo(); };
 $('#wpm').onchange = updateScriptInfo;
 $('#loadSample').onclick = () => { scriptEl.value = SAMPLE; updateScriptInfo(); };
 
