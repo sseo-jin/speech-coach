@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 <header class="top">
-  <nav class="topbar"><a class="brand" href="index.html">Speech Coach</a><span><a href="index.html" aria-current="page">Coach</a><a href="pricing.html">Pricing</a></span></nav>
+  <nav class="topbar"><a class="brand" href="index.html">Speech Coach</a><span><a href="index.html" aria-current="page">Coach</a><a href="pricing.html">Pricing</a><span id="acct"></span></span></nav>
   <h1>Speech <em>Coach</em></h1>
   <p class="sub">Your AI presentation coach. See exactly where to practice, and walk in ready.</p>
   <ul class="steps-nav">
@@ -92,13 +92,24 @@
     <p class="hint">Every time you analyze this script, your Ready score is saved here (only in this browser).</p>
     <div id="trend" class="trend"></div>
     <div id="graph"></div>
-    <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button><button id="saveDemo" class="ghost" hidden>Save as demo.json</button></div>
+    <div class="row"><button id="clearHist" class="ghost">Clear history for this script</button><button id="resetAll" class="ghost danger">Reset all my scores</button><button id="saveDemo" class="ghost" hidden>Save as demo.json</button></div>
   </section>
 
 </main>
 
 <footer class="muted"><a href="pricing.html">Pricing</a> · Made by Jin Seo · Whisper in your browser · pronunciation by Microsoft Azure AI Speech</footer>
 <audio id="player" hidden></audio>
+<dialog id="auth">
+  <form method="dialog">
+    <h3>Save your scores</h3>
+    <p class="muted">Log in to keep your practice history on any computer.</p>
+    <label>Email<input id="authEmail" type="email" autocomplete="email" required></label>
+    <label>Password<input id="authPw" type="password" autocomplete="current-password" minlength="6" required></label>
+    <p id="authErr" class="err"></p>
+    <div class="row"><button id="authIn" class="primary">Log in</button><button id="authUp" class="ghost">Sign up</button><a href="#" data-act="close" class="muted close">Cancel</a></div>
+  </form>
+</dialog>
+<script src="config.js"></script>
 <script src="config.local.js"></script>
 <script type="module" src="app.js"></script>
 </body>

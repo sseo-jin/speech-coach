@@ -1,6 +1,7 @@
 import { parseScript, analyzeTake, rankSentences, pickWeak } from './align.js';
 import { readyScore, fmt, LONG_PAUSE } from './score.js';
 import { assess, toWav } from './pron.js';
+import { cloud, initCloud, signUp, logIn, logOut, listScores, addScore, clearScores } from './account.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -16,6 +17,35 @@ const store = {
 // If an uploaded take matches a recording in it, its saved transcript and pronunciation are reused,
 // so the demo needs no model download and no Azure key.
 const demo = await fetch('demo.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+// ---------- accounts
+function renderAcct() {
+  if (!cloud.enabled) return;
+  $('#acct').innerHTML = cloud.user
+    ? `<span class="who">${esc(cloud.user.email)}</span><a href="#" data-act="logout">Log out</a>`
+    : `<a href="#" data-act="login">Log in</a>`;
+}
+await initCloud(() => { renderAcct(); if (shownKey) saveAndShowHistory(shownKey, null); }).catch(() => { cloud.enabled = false; });
+renderAcct();
+document.addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
+  e.preventDefault();
+  if (act === 'login') { $('#authErr').textContent = ''; $('#auth').showModal(); }
+  if (act === 'logout') logOut();
+  if (act === 'close') $('#auth').close();
+});
+async function auth(kind) {
+  const email = $('#authEmail').value.trim(), pw = $('#authPw').value;
+  if (!email || pw.length < 6) { $('#authErr').textContent = 'Enter your email and a password of 6+ characters.'; return; }
+  $('#authErr').textContent = kind === 'up' ? 'Creating your account…' : 'Logging in…';
+  try {
+    if (kind === 'up' && !(await signUp(email, pw))) { $('#authErr').textContent = 'Check your email to confirm, then log in.'; return; }
+    if (kind === 'in') await logIn(email, pw);
+    $('#auth').close(); $('#authPw').value = '';
+  } catch (err) { $('#authErr').textContent = err.message; }
+}
+$('#authIn').onclick = (e) => { e.preventDefault(); auth('in'); };
+$('#authUp').onclick = (e) => { e.preventDefault(); auth('up'); };
 
 async function sha(data) {
   const buf = typeof data === 'string' ? new TextEncoder().encode(data) : data;
@@ -339,11 +369,7 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
   $('#cardsSec').hidden = false;
 
   // repeat: save this run, draw the trend
-  const hk = `sc:hist:${scriptKey}`;
-  const hist = getHist(hk);
-  if (!sample) hist.push({ t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
-  if (!sample) store.set(hk, hist.slice(-30));
-  renderHistory(hk);
+  saveAndShowHistory(scriptKey, sample ? null : { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length });
 
   if (scroll) $('#results').scrollIntoView({ behavior: 'smooth' });
 }
@@ -382,10 +408,21 @@ function renderPron(script, take, ti, pron, pronErr, label) {
   $('#pron').innerHTML = out.join(' ');
 }
 
-// history from this browser; on a fresh browser the demo script starts from the history saved in demo.json
-const getHist = (hk) => store.get(hk, null) ?? (demo && hk === `sc:hist:${demo.scriptKey}` ? [...(demo.history || [])] : []);
-function renderHistory(hk) {
-  const hist = getHist(hk);
+// ---------- score history: in the user's account when logged in, otherwise in this browser.
+// Logged out on a fresh browser, the demo script starts from the history saved in demo.json.
+const histKey = (k) => `sc:hist:${k}`;
+const localHist = (k) => store.get(histKey(k), null) ?? (demo && k === demo.scriptKey ? [...(demo.history || [])] : []);
+const loadHist = (k) => cloud.user ? listScores(k) : localHist(k);
+let shownKey = null;
+async function saveAndShowHistory(k, entry) {
+  shownKey = k;
+  try {
+    if (entry) { if (cloud.user) await addScore(k, entry); else store.set(histKey(k), [...localHist(k), entry].slice(-30)); }
+    renderHistory(await loadHist(k));
+  } catch (err) { $('#repeatSec').hidden = false; $('#graph').innerHTML = ''; $('#trend').textContent = 'Could not load your scores: ' + err.message; }
+}
+function renderHistory(hist) {
+  state.hist = hist;
   $('#repeatSec').hidden = !hist.length;
   if (!hist.length) return;
   const recent = hist.slice(-6).map(h => h.score);
@@ -405,8 +442,25 @@ function renderHistory(hk) {
       <text x="${x(i)}" y="${y(h.score) - 11}" text-anchor="middle" class="val">${h.score}</text>
       <text x="${x(i)}" y="${H - 6}" text-anchor="middle" class="axis">#${i + 1}</text>`).join('')}
   </svg>`;
-  $('#clearHist').onclick = () => { if (confirm('Clear the score history for this script?')) { store.set(hk, []); renderHistory(hk); } };
 }
+$('#clearHist').onclick = async () => {
+  if (!shownKey || !confirm('Clear the score history for this script?')) return;
+  try { if (cloud.user) await clearScores(shownKey); else store.set(histKey(shownKey), []); } catch (err) { return alert(err.message); }
+  saveAndShowHistory(shownKey, null);
+};
+$('#resetAll').onclick = async () => {
+  if (!confirm('Delete ALL your scores, for every script? This cannot be undone.')) return;
+  try {
+    if (cloud.user) await clearScores();
+    else {
+      let keys = []; try { keys = Object.keys(localStorage).filter(k => k.startsWith('sc:hist:')); } catch { /* blocked */ }
+      keys.forEach(k => store.del(k));
+      if (demo) store.set(histKey(demo.scriptKey), []);
+    }
+  } catch (err) { return alert(err.message); }
+  store.del('sc:lastResult');
+  if (shownKey) saveAndShowHistory(shownKey, null);
+};
 
 $('#makeCards').onclick = () => { $('#cards').hidden = false; $('#print').hidden = false; $('#cards').scrollIntoView({ behavior: 'smooth' }); };
 $('#print').onclick = () => window.print();
@@ -428,7 +482,7 @@ if (demo?.sample) {
 // Run in the console after analyzing the demo takes, then save the text as demo.json
 window.scExportDemo = () => {
   const l = state.last; if (!l?.results) return 'Analyze first.';
-  return JSON.stringify({ script: l.script, target: l.target, scriptKey: l.scriptKey, tx: l.tx, pron: l.pron, sample: { results: l.results, pron: l.pronResult }, history: getHist(`sc:hist:${l.scriptKey}`) });
+  return JSON.stringify({ script: l.script, target: l.target, scriptKey: l.scriptKey, tx: l.tx, pron: l.pron, sample: { results: l.results, pron: l.pronResult }, history: state.hist || [] });
 };
 // on localhost only: save the latest analysis + this script's score history as demo.json
 if (['localhost', '127.0.0.1'].includes(location.hostname)) {

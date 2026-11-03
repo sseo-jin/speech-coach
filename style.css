@@ -179,6 +179,18 @@ footer{max-width:920px;margin:0 auto;padding:10px 16px 40px;text-align:center}
 .topbar span a[aria-current]{background:rgba(255,255,255,.12);color:#fff}
 footer a{color:var(--accent);text-decoration:none}
 
+#acct{display:flex;gap:6px;align-items:center;margin-left:6px;padding-left:10px;border-left:1px solid rgba(255,255,255,.18)}
+#acct .who{color:rgba(255,255,255,.6);font-size:13px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#acct:empty{display:none}
+dialog#auth{border:0;border-radius:20px;padding:28px;width:min(380px,calc(100% - 32px));box-shadow:0 24px 60px rgba(10,10,30,.35)}
+dialog#auth::backdrop{background:rgba(10,10,25,.55);backdrop-filter:blur(3px)}
+dialog#auth h3{margin:0 0 4px;font:400 30px/1.1 "Instrument Serif",Georgia,serif}
+dialog#auth label{display:grid;gap:6px;margin:14px 0 0;font-size:14px;font-weight:600}
+dialog#auth input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+dialog#auth .err{min-height:20px;margin:12px 0 4px;font-size:14px;color:var(--muted)}
+dialog#auth .close{margin-left:auto}
+button.danger{color:#c92a2a}
+
 /* ---------- pricing page */
 .pricing-page .plans{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
 .pricing-page .plan{padding:30px 28px;display:flex;flex-direction:column;position:relative}
