@@ -11,8 +11,8 @@ html{scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;-webkit-font-smoothing:antialiased}
 
 /* ---------- hero */
-.top{position:relative;overflow:hidden;background:radial-gradient(1200px 400px at 85% -10%,rgba(124,77,255,.55),transparent 60%),radial-gradient(900px 380px at 0% 120%,rgba(59,91,253,.55),transparent 60%),#0d0f1a;color:#fff;padding:64px 20px 72px}
-.top>*{max-width:920px;margin-left:auto;margin-right:auto}
+.top{position:relative;overflow:hidden;background:radial-gradient(1200px 400px at 85% -10%,rgba(124,77,255,.55),transparent 60%),radial-gradient(900px 380px at 0% 120%,rgba(59,91,253,.55),transparent 60%),#0d0f1a;color:#fff;padding:64px max(20px,calc((100% - 920px) / 2 + 16px)) 72px}
+.top>*{position:relative;z-index:1}
 .top::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:44px 44px;mask-image:linear-gradient(180deg,#000,transparent 85%);pointer-events:none}
 h1{margin:0;font:400 64px/1 "Instrument Serif",Georgia,serif;letter-spacing:-1px}
 h1 em{font-style:italic;background:linear-gradient(90deg,#a5b4ff,#d3b8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
