@@ -1,7 +1,7 @@
 // Accounts (Supabase email + password) and per-user score history.
 // Without a Supabase project in config.js the app works as before: scores stay in this browser.
 const cfg = window.SC_CLOUD || {};
-const SB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm';
+const SB_URL = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/+esm';
 
 let sb = null;
 export const cloud = { enabled: !!(cfg.url && cfg.anonKey), user: null };
