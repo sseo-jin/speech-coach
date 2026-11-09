@@ -313,7 +313,7 @@ function sentenceHTML(script, si, hits, nTakes) {
 }
 const snippet = (text, n = 7) => { const w = text.split(/\s+/); return esc(w.slice(0, n).join(' ')) + (w.length > n ? ' …' : ''); };
 
-function render(script, takes, pron, pronErr, scriptKey, { sample = false, scroll = true } = {}) {
+function render(script, takes, pron, pronErr, scriptKey, { sample = false, scroll = true, demoHist = null } = {}) {
   const ranked = rankSentences(script, takes);
   const weak = pickWeak(ranked);
   const weakSet = new Set(weak.map(w => w.si));
@@ -368,7 +368,10 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
 
   // repeat: save this run, draw the trend
   histScript = script;
-  saveAndShowHistory(scriptKey, sample ? null : { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length, missed: weak.map(w => w.si) });
+  const entry = { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length, missed: weak.map(w => w.si) };
+  // sample result: the saved practice runs from demo.json plus this run, shown only (nothing is saved)
+  if (demoHist) { shownKey = scriptKey; renderHistory([...demoHist, entry]); }
+  else saveAndShowHistory(scriptKey, sample ? null : entry);
 
   if (scroll) $('#results').scrollIntoView({ behavior: 'smooth' });
 }
@@ -510,7 +513,7 @@ if (demo?.sample) {
     updateScriptInfo(); refreshAnalyze();
     state.wavs = [];
     setProgress(1, 'This is a sample result. Upload your own takes and press Analyze to see yours.');
-    render(parseScript(demo.script), demo.sample.results, demo.sample.pron, '', demo.scriptKey, { sample: true });
+    render(parseScript(demo.script), demo.sample.results, demo.sample.pron, '', demo.scriptKey, { sample: true, demoHist: demo.history || [] });
   };
 }
 
