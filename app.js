@@ -451,7 +451,7 @@ function renderMissed(hist) {
   if (runs.length >= 2) oftenSet = new Set(often.map(([si]) => si));
   const top = often.slice(0, 3);
   $('#missed').innerHTML = runs.length < 2 ? '' : top.length
-    ? `<h3 class="sec">🔁 Sentences you miss most often</h3>` + top.map(([si, n]) => `
+    ? `<h3 class="sec">🔁 Sentences you often get stuck on</h3>` + top.map(([si, n]) => `
       <div class="weak-item"><div class="sent">“${snippet(histScript.sentences[si].text, 12)}”</div>
       <div class="why">stuck in ${n} of ${runs.length} runs</div></div>`).join('')
     : `<p class="muted">No sentence keeps coming back across your ${runs.length} runs. 🎉</p>`;
