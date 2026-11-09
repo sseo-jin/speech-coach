@@ -27,7 +27,9 @@ function renderAcct() {
     : `<a href="#" data-act="login">Log in</a>`;
 }
 document.body.classList.toggle('locked', cloud.enabled); // until we know who is logged in
-await initCloud(() => { renderAcct(); if (shownKey) saveAndShowHistory(shownKey, null); }).catch(() => { cloud.enabled = false; });
+// the sample result's graph is shown only; a login refresh must not swap it for the account's (empty) history
+let demoView = null;
+await initCloud(() => { renderAcct(); if (demoView) renderHistory(demoView); else if (shownKey) saveAndShowHistory(shownKey, null); }).catch(() => { cloud.enabled = false; });
 renderAcct();
 document.addEventListener('click', (e) => {
   const act = e.target.closest('[data-act]')?.dataset.act; if (!act) return;
@@ -348,14 +350,6 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
     ${list.map(s => `<button class="chip" ${playAttr(s.ti, s.a, s.b)} title="listen">▶ Take ${takes[s.ti].label} · ${s.dur.toFixed(1)} s</button>`).join('')}</div>`).join('')
     : '<p class="muted">No stops over 2 seconds. 👏</p>';
 
-  // weak sentences
-  $('#weak').innerHTML = weak.length ? weak.map(w => `
-    <div class="weak-item"><div class="sent">${sentenceHTML(script, w.si, w.wordHits, w.nTakes)}</div>
-    <div class="why">${w.nTakes > 1 ? `stuck in ${w.troubled}/${w.nTakes} takes · ` : ''}${w.reasons.join(' · ') || 'slow'}</div></div>`).join('')
-    : '<p class="muted">No sentence keeps tripping you up. Nice! 🎉</p>';
-  const unpracticed = ranked.filter(x => x.skippedTakes > 0);
-  if (unpracticed.length && unpracticed.length <= 6) $('#weak').innerHTML += `<p class="muted" style="margin-top:12px">Not practiced in some takes (not counted as weak): ${unpracticed.map(x => `#${x.si + 1} (${x.skippedTakes}/${takes.length})`).join(', ')}</p>`;
-
   // pronunciation on the latest take — click a word to hear it
   renderPron(script, takes[last], last, pron, pronErr, takes[last].label);
 
@@ -370,8 +364,8 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
   histScript = script;
   const entry = { t: Date.now(), score: r.score, takes: takes.length, stuck: weak.length, missed: weak.map(w => w.si) };
   // sample result: the saved practice runs from demo.json plus this run, shown only (nothing is saved)
-  if (demoHist) { shownKey = scriptKey; renderHistory([...demoHist, entry]); }
-  else saveAndShowHistory(scriptKey, sample ? null : entry);
+  if (demoHist) { shownKey = scriptKey; demoView = [...demoHist, entry]; renderHistory(demoView); }
+  else { demoView = null; saveAndShowHistory(scriptKey, sample ? null : entry); }
 
   if (scroll) $('#results').scrollIntoView({ behavior: 'smooth' });
 }
