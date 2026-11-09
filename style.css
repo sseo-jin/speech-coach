@@ -21,6 +21,7 @@ h1 em{font-style:italic;background:linear-gradient(90deg,#a5b4ff,#d3b8ff);-webki
 .steps-nav a{display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 8px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff;text-decoration:none;font-size:14px;font-weight:500;backdrop-filter:blur(6px);transition:background .2s}
 .steps-nav a:hover{background:rgba(255,255,255,.16)}
 .steps-nav i{font-style:normal;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#0d0f1a;font-size:12px;font-weight:700}
+.sample-all{margin:22px 0 0}.sample-all .muted{color:rgba(255,255,255,.7);font-size:13.5px;margin-left:8px}
 .privacy{margin:22px 0 0;color:rgba(255,255,255,.6);font-size:13.5px}
 
 /* ---------- layout */

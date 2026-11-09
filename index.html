@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Speech Coach — your AI presentation coach</title>
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
 <header class="top">
@@ -17,6 +17,7 @@
     <li><a href="#step3"><i>3</i>Check</a></li>
     <li><a href="#repeatSec"><i>4</i>Repeat</a></li>
   </ul>
+  <p class="sample-all"><button id="sampleAll" class="primary">▶ See a full sample</button> <span class="muted">Fills in every step with a sample script, result, score graph and cue card.</span></p>
   <p class="privacy">🔒 Speech-to-text runs in this browser. Your recordings stay on your device unless you turn on the pronunciation check.</p>
 </header>
 
@@ -39,7 +40,6 @@
         <span class="tpick" id="tTo" aria-label="Target to"><input type="number" class="tm" min="0" max="10" step="1" aria-label="minutes"><i>:</i><input type="number" class="ts" min="-15" max="60" step="15" aria-label="seconds"></span>
       </label>
       <label class="muted">My speed <select id="wpm"><option>115</option><option selected>125</option><option>135</option><option>145</option></select> wpm</label>
-      <button id="loadSample" class="ghost">Load sample script</button>
     </div>
   </section>
 
@@ -60,7 +60,6 @@
     <h2><span class="n">3</span> Check your score</h2>
     <div class="row">
       <button id="analyze" class="primary big" disabled>Analyze</button>
-      <button id="sampleResult" class="ghost" hidden>See a sample result</button>
       <label class="toggle"><input type="checkbox" id="pronOn"> Check pronunciation <span class="muted">(Microsoft)</span></label>
       <input type="hidden" id="model" value="onnx-community/whisper-base.en_timestamped">
       <input type="hidden" id="pauseMin" value="0.8">

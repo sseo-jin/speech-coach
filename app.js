@@ -124,7 +124,6 @@ function updateScriptInfo() {
 }
 scriptEl.addEventListener('input', updateScriptInfo);
 $('#wpm').onchange = updateScriptInfo;
-$('#loadSample').onclick = () => { scriptEl.value = SAMPLE; updateScriptInfo(); };
 
 // ---------- 2 RECORD
 function renderTakes() {
@@ -498,18 +497,19 @@ $('#makeCards').onclick = () => {
 $('#print').onclick = () => window.print();
 updateScriptInfo();
 
-// ---------- sample result (demo.json)
-if (demo?.sample) {
-  $('#sampleResult').hidden = false;
-  $('#sampleResult').onclick = () => {
-    scriptEl.value = demo.script; store.set('sc:script', demo.script);
-    setT('tFrom', demo.target[0]); setT('tTo', demo.target[1]);
-    updateScriptInfo(); refreshAnalyze();
-    state.wavs = [];
-    setProgress(1, 'This is a sample result. Upload your own takes and press Analyze to see yours.');
-    render(parseScript(demo.script), demo.sample.results, demo.sample.pron, '', demo.scriptKey, { sample: true, demoHist: demo.history || [] });
-  };
-}
+// ---------- one button: sample script + result + graph + cue card (demo.json)
+$('#sampleAll').onclick = () => {
+  document.body.classList.remove('locked'); // the sample is for demos, so it shows even before login
+  if (!demo?.sample) { scriptEl.value = SAMPLE; updateScriptInfo(); $('#step1').scrollIntoView({ behavior: 'smooth' }); return; }
+  scriptEl.value = demo.script; store.set('sc:script', demo.script);
+  setT('tFrom', demo.target[0]); setT('tTo', demo.target[1]);
+  updateScriptInfo(); refreshAnalyze();
+  state.wavs = [];
+  setProgress(1, 'This is a sample result. Upload your own takes and press Analyze to see yours.');
+  render(parseScript(demo.script), demo.sample.results, demo.sample.pron, '', demo.scriptKey, { sample: true, scroll: false, demoHist: demo.history || [] });
+  $('#makeCards').onclick();
+  $('#step1').scrollIntoView({ behavior: 'smooth' });
+};
 
 // Run in the console after analyzing the demo takes, then save the text as demo.json
 window.scExportDemo = () => {
