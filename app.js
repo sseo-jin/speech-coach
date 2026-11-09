@@ -323,14 +323,6 @@ function render(script, takes, pron, pronErr, scriptKey, { sample = false, scrol
   const r = readyScore(takes, weak, [lo, hi], pron);
   const last = takes.length - 1;
 
-  // Ready score
-  const label = { time: 'Time', pauses: 'Pauses', stuck: 'Stuck sentences', pron: 'Pronunciation' };
-  const tone = r.score >= 85 ? 'good' : r.score >= 65 ? 'warn' : 'bad';
-  $('#ready').innerHTML = `<div class="score ${tone}" style="--p:${r.score}"><b>${r.score}</b><span>Ready</span></div>
-    <div class="why"><p class="lead">${r.score >= 85 ? 'You are almost ready.' : r.score >= 65 ? 'Getting there.' : 'Keep practicing.'}</p>
-    <p>${r.why.length ? r.why.map(esc).join(' · ') : 'Nothing to fix. 🎉'}</p>
-    <div class="parts">${r.parts.map(p => `<span>${label[p.key]} <b>${Math.round(p.got)}</b>/${p.max}</span>`).join('')}</div></div>`;
-
   // time and speed
   $('#timeSpeed').innerHTML = takes.map((t, i) => {
     const ok = t.total >= lo && t.total <= hi;
